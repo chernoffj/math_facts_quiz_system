@@ -33,7 +33,7 @@
             margin-bottom: 30px;
         }
         
-        .login-screen, .level-select, .question-screen, .results-screen, .teacher-view, .signup-screen, .countdown-screen, .student-detail-screen {
+        .login-screen, .level-select, .question-screen, .results-screen, .teacher-view, .signup-screen, .countdown-screen, .student-detail-screen, .reset-password-screen {
             display: none;
         }
         
@@ -601,6 +601,17 @@
             margin-bottom: 10px;
         }
         
+        .forgot-password-link {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+        }
+        
+        .forgot-password-link:hover {
+            color: #5568d3;
+        }
+        
         @media (max-width: 600px) {
             .container {
                 padding: 20px;
@@ -693,9 +704,26 @@
                 <button class="btn" onclick="login()" id="student-login-btn" disabled>Student Login</button>
                 <button class="btn btn-secondary" onclick="teacherLogin()" id="teacher-login-btn" disabled>Teacher Login</button>
             </div>
+            <div style="text-align: center; margin-top: 10px;">
+                <span class="forgot-password-link" onclick="showResetPasswordScreen()">Forgot your password?</span>
+            </div>
             <div style="text-align: center; margin-top: 20px;">
                 <button class="btn" onclick="showSignupScreen('student')" id="student-signup-btn" style="background: #17a2b8;" disabled>Student Sign Up</button>
                 <button class="btn btn-teacher" onclick="showSignupScreen('teacher')" id="teacher-signup-btn" disabled>Teacher Sign Up</button>
+            </div>
+        </div>
+        
+        <div class="reset-password-screen">
+            <h2 style="text-align: center; margin-bottom: 20px;">🔑 Reset Password</h2>
+            <p style="text-align: center; color: #666; margin-bottom: 20px;">Enter your email address and we'll send you a link to reset your password.</p>
+            <div id="reset-error"></div>
+            <div class="form-group">
+                <label for="reset-email">Email</label>
+                <input type="email" id="reset-email" placeholder="Enter your account email">
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" onclick="sendPasswordReset()" id="reset-btn">Send Reset Link</button>
+                <button class="btn btn-secondary" onclick="backToLogin()">Back to Login</button>
             </div>
         </div>
         
@@ -1110,6 +1138,58 @@
             }
         });
         
+        // Password reset functions
+        function showResetPasswordScreen() {
+            document.getElementById('reset-error').innerHTML = '';
+            document.getElementById('reset-email').value = document.getElementById('email').value.trim() || '';
+            showScreen('reset-password-screen');
+        }
+        
+        async function sendPasswordReset() {
+            const email = document.getElementById('reset-email').value.trim();
+            const errorDiv = document.getElementById('reset-error');
+            const resetBtn = document.getElementById('reset-btn');
+            
+            if (!email) {
+                errorDiv.innerHTML = '<div class="error-message">Please enter your email address.</div>';
+                return;
+            }
+            
+            resetBtn.disabled = true;
+            resetBtn.textContent = 'Sending...';
+            
+            try {
+                await auth.sendPasswordResetEmail(email);
+                errorDiv.innerHTML = '<div class="success-message">✅ Password reset email sent! Check your inbox (and spam folder) for a link to reset your password.</div>';
+                resetBtn.textContent = 'Email Sent';
+                // Re-enable after a few seconds so they can resend if needed
+                setTimeout(() => {
+                    resetBtn.disabled = false;
+                    resetBtn.textContent = 'Resend Reset Link';
+                }, 5000);
+            } catch (error) {
+                resetBtn.disabled = false;
+                resetBtn.textContent = 'Send Reset Link';
+                
+                // Provide user-friendly error messages
+                let message;
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        message = 'No account found with that email address. Please check the email and try again.';
+                        break;
+                    case 'auth/invalid-email':
+                        message = 'Please enter a valid email address.';
+                        break;
+                    case 'auth/too-many-requests':
+                        message = 'Too many reset attempts. Please wait a few minutes and try again.';
+                        break;
+                    default:
+                        message = error.message;
+                }
+                errorDiv.innerHTML = `<div class="error-message">${message}</div>`;
+            }
+        }
+        
         function showSignupScreen(type) {
             signupType = type;
             document.getElementById('signup-error').innerHTML = '';
@@ -1457,7 +1537,7 @@
         }
         
         function showScreen(screenClass) {
-            document.querySelectorAll('.login-screen, .level-select, .question-screen, .results-screen, .teacher-view, .signup-screen, .countdown-screen, .student-detail-screen').forEach(el => {
+            document.querySelectorAll('.login-screen, .level-select, .question-screen, .results-screen, .teacher-view, .signup-screen, .countdown-screen, .student-detail-screen, .reset-password-screen').forEach(el => {
                 el.classList.remove('active');
             });
             document.querySelector('.' + screenClass).classList.add('active');
