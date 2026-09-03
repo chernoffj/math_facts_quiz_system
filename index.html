@@ -717,6 +717,61 @@
 
         .who-am-i .who-avatar { font-size: 34px; }
 
+        /* ---------- Student PIN ---------- */
+        .pin-who {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .pin-who .pick-avatar { font-size: 52px; }
+        .pin-who .pin-who-name { font-size: 20px; font-weight: bold; color: #444; }
+
+        .pin-dots {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin: 18px 0 6px;
+        }
+
+        .pin-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 3px solid #c6cbe0;
+            background: #f8f9fa;
+            transition: all 0.15s;
+        }
+
+        .pin-dot.filled {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #5a68c8;
+            transform: scale(1.12);
+        }
+
+        .pin-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: clamp(200px, 46vh, 300px);
+            max-width: 100%;
+            margin: 14px auto 0;
+        }
+
+        .pin-shake { animation: pinShake 0.4s ease; }
+
+        @keyframes pinShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px); }
+            40% { transform: translateX(10px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+
+        .pin-note { text-align: center; color: #888; font-size: 13px; margin-top: 14px; }
+
         /* ================= SKY CLIMBER (multiplication mode) ================= */
         .climb-scene {
             --h: 0;
@@ -1195,6 +1250,7 @@
                     <ul>
                         <li><strong>No password needed.</strong> Tap <em>I'm a Student</em> and type the <strong>class code</strong> your teacher gives you (for example <code>SMITH482</code>).</li>
                         <li><strong>Find your name</strong> on the class list and tap it.</li>
+                        <li><strong>Type your 4-number PIN.</strong> The first time you log in you get to make one up — keep it secret, and ask your teacher if you ever forget it.</li>
                         <li><strong>Pick your avatar</strong> the first time — you can change it any time from the menu.</li>
                         <li><strong>Math Facts Levels:</strong> answer quickly and correctly to master every fact and unlock the next level.</li>
                         <li><strong>Sky Climber (×2 to ×10):</strong> every climb is 20 questions. Answer in under <strong>3 seconds</strong> to climb a full floor and clear the fact, or under <strong>6 seconds</strong> to climb half a floor.</li>
@@ -1209,6 +1265,7 @@
                         <li><strong>Create your teacher account</strong> with an email and password, and choose your class grade level.</li>
                         <li><strong>You get a unique class code</strong> made from your last name plus numbers (e.g. <code>SMITH482</code>). Share it with your class.</li>
                         <li><strong>Add each student by name</strong> in your dashboard. They log in with the class code — no student emails or passwords required.</li>
+                        <li><strong>Each student picks a 4-digit PIN</strong> the first time they log in, so nobody can tap someone else's name. Use <em>Reset PIN</em> on their card when a student forgets theirs — they choose a new one at their next login.</li>
                         <li><strong>Move a student to another teacher</strong> with that teacher's class code, or remove a student from your roster.</li>
                         <li><strong>Track progress</strong> for both Math Facts Levels and the ×2–×10 Sky Climber modules, and reset levels when needed.</li>
                     </ul>
@@ -1318,6 +1375,34 @@
             <p style="text-align:center; color:#666;" id="roster-subtitle"></p>
             <div id="roster-error"></div>
             <div class="pick-grid" id="roster-grid"></div>
+        </div>
+
+        <!-- ========================= STUDENT: PIN ========================= -->
+        <div id="pin-screen" class="screen">
+            <span class="back-link" onclick="cancelPin()">← Not me</span>
+            <div class="pin-who">
+                <span class="pick-avatar" id="pin-avatar">🙂</span>
+                <span class="pin-who-name" id="pin-name"></span>
+            </div>
+            <h2 style="text-align:center; margin-bottom:6px;" id="pin-title">Enter your PIN</h2>
+            <p style="text-align:center; color:#666;" id="pin-subtitle"></p>
+            <div class="pin-dots" id="pin-dots"></div>
+            <div id="pin-error"></div>
+            <div class="pin-pad" id="pin-pad">
+                <button class="num-btn" onclick="pinPadInput('1')">1</button>
+                <button class="num-btn" onclick="pinPadInput('2')">2</button>
+                <button class="num-btn" onclick="pinPadInput('3')">3</button>
+                <button class="num-btn" onclick="pinPadInput('4')">4</button>
+                <button class="num-btn" onclick="pinPadInput('5')">5</button>
+                <button class="num-btn" onclick="pinPadInput('6')">6</button>
+                <button class="num-btn" onclick="pinPadInput('7')">7</button>
+                <button class="num-btn" onclick="pinPadInput('8')">8</button>
+                <button class="num-btn" onclick="pinPadInput('9')">9</button>
+                <button class="num-btn clear-btn" onclick="pinPadClear()">Clear</button>
+                <button class="num-btn zero-btn" onclick="pinPadInput('0')">0</button>
+                <button class="num-btn backspace-btn" onclick="pinPadBackspace()">⌫</button>
+            </div>
+            <p class="pin-note">Keep your PIN secret. If you forget it, your teacher can reset it for you.</p>
         </div>
 
         <!-- ========================= STUDENT: AVATAR ========================= -->
@@ -1497,7 +1582,7 @@
                 <p style="color:#667; font-size:14px; margin-top:10px;">
                     <span id="teacher-class-info"></span>
                 </p>
-                <p style="color:#888; font-size:13px; margin-top:6px;">Students type this code to log in — no student email or password required.</p>
+                <p style="color:#888; font-size:13px; margin-top:6px;">Students type this code to log in, tap their name, then enter their own 4-digit PIN.</p>
             </div>
 
             <div class="panel">
@@ -1607,6 +1692,15 @@
         let authTransition = false;   // true while we deliberately swap between anonymous/teacher sign-in
         let pendingAvatar = null;
         let avatarIsChange = false;
+
+        // --- student PIN gate ---
+        let pinStudent = null;           // record waiting behind the PIN screen
+        let pinOrigin = null;            // 'roster' | 'restore' - where to go back to
+        let pinMode = null;              // 'set' | 'confirm' | 'enter'
+        let pinEntry = '';               // digits typed so far
+        let pinFirstEntry = '';          // first entry while creating a PIN
+        let pinAttempts = 0;             // wrong tries this visit
+        let pinBusy = false;
 
         // multiplication run state
         let multPool = [];               // factors not yet cleared at mastery speed this run
@@ -1855,14 +1949,9 @@
                     localStorage.removeItem(STORAGE_KEY);
                     return false;
                 }
-                student = normalizeStudent(Object.assign({ id: saved.studentId }, record));
-                role = 'student';
                 classInfo = saved.classInfo || null;
-                if (student.avatar) {
-                    showModeSelect();
-                } else {
-                    showAvatarScreen(false);
-                }
+                // A saved session still has to clear the PIN gate before it opens the account.
+                beginPinFlow(normalizeStudent(Object.assign({ id: saved.studentId }, record)), 'restore');
                 return true;
             } catch (error) {
                 console.error('Could not restore student session:', error);
@@ -2199,15 +2288,7 @@
                     setMessage('roster-error', 'error', 'That student is no longer in this class.');
                     return;
                 }
-                student = normalizeStudent(Object.assign({ id: studentId }, record));
-                role = 'student';
-                saveStudentSession();
-
-                if (student.avatar) {
-                    showModeSelect();
-                } else {
-                    showAvatarScreen(false);
-                }
+                beginPinFlow(normalizeStudent(Object.assign({ id: studentId }, record)), 'roster');
             } catch (error) {
                 console.error('Could not open student:', error);
                 setMessage('roster-error', 'error', 'Could not open that student. Please try again.');
@@ -2225,6 +2306,232 @@
             try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
             showScreen('welcome-screen');
         }
+
+        /* =====================================================================
+         * STUDENT PIN
+         * ===================================================================*/
+        const PIN_LENGTH = 4;
+        const PIN_MAX_ATTEMPTS = 5;
+        const PIN_SALT = 'edison-math-pin-v1';
+
+        function studentHasPin(record) {
+            return !!(record && typeof record.pinHash === 'string' && record.pinHash);
+        }
+
+        // Only used when SubtleCrypto is missing (a non-secure origin); the live site is HTTPS.
+        function fallbackPinHash(text) {
+            let h1 = 0x811c9dc5;
+            let h2 = 0xc2b2ae35;
+            for (let i = 0; i < text.length; i++) {
+                const c = text.charCodeAt(i);
+                h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+                h2 = Math.imul(h2 + c, 2246822519) >>> 0;
+                h2 = ((h2 << 13) | (h2 >>> 19)) >>> 0;
+            }
+            return ('0000000' + h1.toString(16)).slice(-8) + ('0000000' + h2.toString(16)).slice(-8);
+        }
+
+        // The PIN is never stored in the clear - the record only ever holds this digest.
+        async function hashPin(pin, studentId) {
+            const material = PIN_SALT + '|' + studentId + '|' + pin;
+            if (window.crypto && window.crypto.subtle && window.TextEncoder) {
+                try {
+                    const digest = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(material));
+                    return 's256$' + Array.prototype.map.call(new Uint8Array(digest), function (b) {
+                        return ('0' + b.toString(16)).slice(-2);
+                    }).join('');
+                } catch (e) { /* no SubtleCrypto here - use the fallback below */ }
+            }
+            return 'x1$' + fallbackPinHash(material);
+        }
+
+        function beginPinFlow(record, origin) {
+            pinStudent = record;
+            pinOrigin = origin;
+            pinEntry = '';
+            pinFirstEntry = '';
+            pinAttempts = 0;
+            pinBusy = false;
+            pinMode = studentHasPin(record) ? 'enter' : 'set';
+
+            $('pin-avatar').textContent = record.avatar || '🙂';
+            $('pin-name').textContent = record.name || '';
+            setMessage('pin-error', '', '');
+            renderPin();
+            showScreen('pin-screen');
+        }
+
+        function renderPin() {
+            const titles = {
+                set: ['Create your secret PIN', 'Pick 4 numbers you will remember.'],
+                confirm: ['Type your PIN again', 'Just to be sure you remember it.'],
+                enter: ['Enter your PIN', 'Type your 4-number PIN to keep going.'],
+                locked: ['PIN locked', 'Ask your teacher to reset your PIN.']
+            };
+            const copy = titles[pinMode] || titles.enter;
+            $('pin-title').textContent = copy[0];
+            $('pin-subtitle').textContent = copy[1];
+
+            let dots = '';
+            for (let i = 0; i < PIN_LENGTH; i++) {
+                dots += '<span class="pin-dot' + (i < pinEntry.length ? ' filled' : '') + '"></span>';
+            }
+            $('pin-dots').innerHTML = dots;
+
+            const locked = pinMode === 'locked';
+            $('pin-pad').querySelectorAll('button').forEach(function (btn) { btn.disabled = locked; });
+        }
+
+        function shakePin() {
+            const dots = $('pin-dots');
+            dots.classList.remove('pin-shake');
+            void dots.offsetWidth;
+            dots.classList.add('pin-shake');
+        }
+
+        function pinPadInput(digit) {
+            if (pinBusy || pinMode === 'locked' || pinEntry.length >= PIN_LENGTH) return;
+            setMessage('pin-error', '', '');
+            pinEntry += digit;
+            renderPin();
+            if (pinEntry.length === PIN_LENGTH) setTimeout(submitPin, 150);
+        }
+
+        function pinPadBackspace() {
+            if (pinBusy || pinMode === 'locked' || !pinEntry.length) return;
+            pinEntry = pinEntry.slice(0, -1);
+            renderPin();
+        }
+
+        function pinPadClear() {
+            if (pinBusy || pinMode === 'locked') return;
+            pinEntry = '';
+            setMessage('pin-error', '', '');
+            renderPin();
+        }
+
+        async function submitPin() {
+            if (pinBusy || !pinStudent || pinEntry.length !== PIN_LENGTH) return;
+
+            if (pinMode === 'set') {
+                pinFirstEntry = pinEntry;
+                pinEntry = '';
+                pinMode = 'confirm';
+                renderPin();
+                return;
+            }
+
+            if (pinMode === 'confirm') {
+                if (pinEntry !== pinFirstEntry) {
+                    pinFirstEntry = '';
+                    pinEntry = '';
+                    pinMode = 'set';
+                    renderPin();
+                    shakePin();
+                    setMessage('pin-error', 'error', 'Those PINs did not match. Please pick your 4 numbers again.');
+                    return;
+                }
+                await savePin(pinEntry);
+                return;
+            }
+
+            await checkPin(pinEntry);
+        }
+
+        async function savePin(pin) {
+            pinBusy = true;
+            try {
+                const hash = await hashPin(pin, pinStudent.id);
+                await db.ref('students/' + pinStudent.id + '/pinHash').set(hash);
+                pinStudent.pinHash = hash;
+                completeStudentLogin();
+            } catch (error) {
+                console.error('Could not save PIN:', error);
+                pinEntry = '';
+                pinFirstEntry = '';
+                pinMode = 'set';
+                renderPin();
+                setMessage('pin-error', 'error', 'Could not save your PIN. Please try again.');
+            } finally {
+                pinBusy = false;
+            }
+        }
+
+        async function checkPin(pin) {
+            pinBusy = true;
+            try {
+                const hash = await hashPin(pin, pinStudent.id);
+                if (hash === pinStudent.pinHash) {
+                    completeStudentLogin();
+                    return;
+                }
+                pinAttempts++;
+                pinEntry = '';
+                if (pinAttempts >= PIN_MAX_ATTEMPTS) {
+                    pinMode = 'locked';
+                    renderPin();
+                    setMessage('pin-error', 'error', 'Too many tries. Ask your teacher to reset your PIN.');
+                } else {
+                    renderPin();
+                    shakePin();
+                    const left = PIN_MAX_ATTEMPTS - pinAttempts;
+                    setMessage('pin-error', 'error', 'That PIN is not right. ' +
+                        left + (left === 1 ? ' try' : ' tries') + ' left.');
+                }
+            } catch (error) {
+                console.error('Could not check PIN:', error);
+                pinEntry = '';
+                renderPin();
+                setMessage('pin-error', 'error', 'Could not check your PIN. Please try again.');
+            } finally {
+                pinBusy = false;
+            }
+        }
+
+        function completeStudentLogin() {
+            student = pinStudent;
+            role = 'student';
+            pinStudent = null;
+            pinMode = null;
+            pinEntry = '';
+            pinFirstEntry = '';
+            saveStudentSession();
+
+            if (student.avatar) {
+                showModeSelect();
+            } else {
+                showAvatarScreen(false);
+            }
+        }
+
+        function cancelPin() {
+            pinStudent = null;
+            pinMode = null;
+            pinEntry = '';
+            pinFirstEntry = '';
+            pinBusy = false;
+            if (pinOrigin === 'restore') {
+                try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+            }
+            pinOrigin = null;
+            if (classInfo) {
+                showRoster();
+            } else {
+                showScreen('welcome-screen');
+            }
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (!$('pin-screen').classList.contains('active')) return;
+            if (event.key >= '0' && event.key <= '9') {
+                pinPadInput(event.key);
+            } else if (event.key === 'Backspace') {
+                event.preventDefault();
+                pinPadBackspace();
+            } else if (event.key === 'Escape') {
+                cancelPin();
+            }
+        });
 
         /* =====================================================================
          * AVATARS
@@ -3179,10 +3486,12 @@
                     '<div class="student-identity">' +
                         '<span class="pick-avatar">' + (record.avatar || '❓') + '</span>' +
                         '<div><h4>' + esc(record.name) + '</h4>' +
-                        '<small style="color:#888;">' + getGradeLabel(record.grade) + '</small></div>' +
+                        '<small style="color:#888;">' + getGradeLabel(record.grade) + ' · ' +
+                        (studentHasPin(record) ? '🔒 PIN set' : '🔓 No PIN yet') + '</small></div>' +
                     '</div>' +
                     '<div class="roster-actions">' +
                         '<button class="btn btn-small" onclick="showStudentDetail(\'' + record.id + '\')">Details</button>' +
+                        '<button class="btn btn-small btn-warn" onclick="resetStudentPin(\'' + record.id + '\')">Reset PIN</button>' +
                         '<button class="btn btn-small btn-warn" onclick="moveStudent(\'' + record.id + '\')">Move to Teacher</button>' +
                         '<button class="btn btn-small btn-danger" onclick="removeStudent(\'' + record.id + '\')">Remove</button>' +
                     '</div>' +
@@ -3347,6 +3656,27 @@
             }
         }
 
+        async function resetStudentPin(studentId) {
+            const record = rosterCache[studentId];
+            if (!record) return;
+            if (!studentHasPin(record)) {
+                setMessage('add-student-message', 'info',
+                    esc(record.name) + ' has not set a PIN yet — they will choose one at their next login.');
+                return;
+            }
+            if (!confirm('Reset ' + record.name + '\'s PIN?\n\nThey will choose a new 4-digit PIN the next time they log in.')) return;
+
+            try {
+                await db.ref('students/' + studentId + '/pinHash').remove();
+                await showTeacherView();
+                setMessage('add-student-message', 'success',
+                    esc(record.name) + '’s PIN was reset. They will pick a new one at their next login.');
+            } catch (error) {
+                console.error('Could not reset PIN:', error);
+                alert('Could not reset that PIN: ' + error.message);
+            }
+        }
+
         /* =====================================================================
          * TEACHER: STUDENT DETAIL
          * ===================================================================*/
@@ -3400,7 +3730,9 @@
             $('student-detail-name').textContent = (record.avatar || '') + ' ' + record.name;
 
             let html = '<p style="color:#666; margin-bottom:18px;">' +
-                getGradeLabel(record.grade) + ' · class code ' + esc(teacher.code) + '</p>';
+                getGradeLabel(record.grade) + ' · class code ' + esc(teacher.code) + ' · ' +
+                (studentHasPin(record) ? '🔒 PIN set' : '🔓 No PIN yet') +
+                ' <button class="btn btn-small btn-warn" onclick="resetStudentPin(\'' + record.id + '\')">Reset PIN</button></p>';
 
             html += '<h3 style="margin:16px 0 10px; color:#667eea;">🧮 Math Facts Levels</h3>';
             LEVEL_KEYS.forEach(function (key) {
@@ -3476,6 +3808,10 @@
             goToClassCode: goToClassCode,
             enterClassCode: enterClassCode,
             pickStudent: pickStudent,
+            pinPadInput: pinPadInput,
+            pinPadBackspace: pinPadBackspace,
+            pinPadClear: pinPadClear,
+            cancelPin: cancelPin,
             leaveClass: leaveClass,
             studentLogout: studentLogout,
             showAvatarScreen: showAvatarScreen,
@@ -3504,6 +3840,7 @@
             moveStudent: moveStudent,
             resetStudentLevel: resetStudentLevel,
             resetStudentMult: resetStudentMult,
+            resetStudentPin: resetStudentPin,
             showStudentDetail: showStudentDetail
         };
         Object.keys(api).forEach(function (name) { window[name] = api[name]; });

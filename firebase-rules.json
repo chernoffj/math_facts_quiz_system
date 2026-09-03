@@ -21,7 +21,7 @@
       ".indexOn": ["teacherUid"],
       "$studentId": {
         ".read": "auth != null",
-        ".write": "auth != null && ( (auth.token.firebase.sign_in_provider === 'password' && (data.child('teacherUid').val() === auth.uid || newData.child('teacherUid').val() === auth.uid)) || (auth.token.firebase.sign_in_provider === 'anonymous' && data.exists() && newData.exists() && newData.child('teacherUid').val() === data.child('teacherUid').val() && newData.child('name').val() === data.child('name').val()) )"
+        ".write": "auth != null && ( (auth.token.firebase.sign_in_provider === 'password' && (data.child('teacherUid').val() === auth.uid || newData.child('teacherUid').val() === auth.uid)) || (auth.token.firebase.sign_in_provider === 'anonymous' && data.exists() && newData.exists() && newData.child('teacherUid').val() === data.child('teacherUid').val() && newData.child('name').val() === data.child('name').val() && (!data.child('pinHash').exists() || newData.child('pinHash').val() === data.child('pinHash').val())) )"
       }
     }
   }

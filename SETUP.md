@@ -26,19 +26,37 @@ What the rules enforce:
 | `classCodes/$code` | any signed-in client, one code at a time (no listing) | only the owning teacher |
 | `teachers/$uid` | that teacher only | that teacher only |
 | `students` (list) | only as a `orderByChild('teacherUid').equalTo(...)` query | — |
-| `students/$id` | any signed-in client | the owning teacher (full control); anonymous students may update progress but cannot rename a student or move them to another teacher |
+| `students/$id` | any signed-in client | the owning teacher (full control); anonymous students may update progress but cannot rename a student, move them to another teacher, or overwrite a PIN that is already set |
 
 The remaining looseness is deliberate: an anonymous student device can write progress onto any
 student record in any class, because there is no per-student credential to check. That is the
 tradeoff for password-free student login. If you ever need it tighter, the next step would be a
 Cloud Function that mints a custom token per student at code-entry time.
 
+## 2b. Student PINs
+
+After tapping their name, a student has to enter a 4-digit PIN before their account opens.
+
+* **First login** (and any student added before this feature existed): they are asked to choose a
+  PIN and type it twice. Nothing is saved unless the two entries match.
+* **Every login after that**, including a device that still has a saved session: they type the PIN.
+  Five wrong tries locks the screen until they go back and pick a name again.
+* **Forgotten PIN:** the teacher clicks **Reset PIN** on that student's card (or on the student
+  detail screen). The student then chooses a new PIN at their next login. The roster card shows
+  🔒 *PIN set* or 🔓 *No PIN yet* for every student.
+
+The PIN is never stored in the clear. `students/{id}/pinHash` holds a SHA-256 digest of
+`edison-math-pin-v1|{studentId}|{pin}`, so the same 4 digits produce a different value for each
+student, and the digest cannot be typed back in as a PIN. Four digits is a small space, so this
+protects against classmates poking at each other's accounts, not against a determined attacker
+with database access.
+
 ## 3. Data model
 
 ```
 teachers/{uid}            name, firstName, lastName, email, code, classGrade, createdAt
 classCodes/{CODE}         teacherUid, teacherName, grade
-students/{pushId}         name, avatar, teacherUid, teacherCode, grade, createdAt
+students/{pushId}         name, avatar, teacherUid, teacherCode, grade, createdAt, pinHash
   levels/{A..E}           unlocked, mastery, masteredQuestions{key:tier}, attempts{}
   mult/{t2..t10}          mastery, masteredFacts{f1..f12:tier}, bestCleared, bestFloors, attempts{}
 ```
@@ -69,3 +87,6 @@ every student record, which makes student records much smaller.
 Accounts under the old `users/` node are not read by the new app. Existing teachers need to create
 a teacher account again, and add their students by name. The old data is left untouched in the
 database if you want to consult it.
+
+Student records created before PINs existed simply have no `pinHash`; those students are asked to
+choose one the next time they log in. Nothing needs to be migrated by hand.
