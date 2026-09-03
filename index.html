@@ -1685,6 +1685,7 @@
         let currentQuestion = 0;
         let startTime = null;
         let timerInterval = null;
+        let advanceTimer = null;
         let countdownInterval = null;
         let isProcessingAnswer = false;
         let authReady = false;
@@ -2736,14 +2737,35 @@
         function startRun() {
             answers = [];
             currentQuestion = 0;
-            isProcessingAnswer = false;
+            // Stays locked until showNextQuestion paints the first question, so nothing can be
+            // typed against the previous run's question while this one is still starting.
+            isProcessingAnswer = true;
+            stopRunTimers();
             clearFeedback();
             $('answer-input').value = '';
+            $('question-text').textContent = '…';
 
             if (runKind === 'mult') startMultRun(); else startLevelsRun();
 
             showScreen('question-screen');
             setTimeout(showNextQuestion, 60);
+        }
+
+        function scheduleAdvance(delay) {
+            clearTimeout(advanceTimer);
+            advanceTimer = setTimeout(function () {
+                advanceTimer = null;
+                advanceQuestion();
+            }, delay);
+        }
+
+        // Leaves the run in a state where no timer or queued answer can still fire.
+        function stopRunTimers() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            clearTimeout(advanceTimer);
+            advanceTimer = null;
+            startTime = null;
         }
 
         /* =====================================================================
@@ -3026,7 +3048,7 @@
         }
 
         function checkAnswer() {
-            if (isProcessingAnswer) return;
+            if (isProcessingAnswer || startTime === null) return;
 
             const raw = $('answer-input').value;
             if (raw === '') { clearFeedback(); return; }
@@ -3134,7 +3156,7 @@
             }
 
             recordAnswer(question, userAnswer, true, tier, timeTaken);
-            setTimeout(advanceQuestion, delay);
+            scheduleAdvance(delay);
         }
 
         function handleIncorrect(question, userAnswer) {
@@ -3155,7 +3177,7 @@
             }
 
             recordAnswer(question, userAnswer, false, null, timeTaken);
-            setTimeout(advanceQuestion, 5000);
+            scheduleAdvance(5000);
         }
 
         function recordAnswer(question, userAnswer, correct, tier, timeTaken) {
@@ -3181,7 +3203,8 @@
 
         function endSession() {
             if (!confirm('End this session? Your progress from this round will not be saved.')) return;
-            clearInterval(timerInterval);
+            stopRunTimers();
+            isProcessingAnswer = true;
             if (runKind === 'mult') showModuleSelect(); else showLevelSelect();
         }
 
@@ -3189,7 +3212,8 @@
          * RESULTS
          * ===================================================================*/
         function finishRun() {
-            clearInterval(timerInterval);
+            stopRunTimers();
+            isProcessingAnswer = true;
             if (runKind === 'mult') finishMultRun(); else finishLevelsRun();
         }
 
