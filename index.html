@@ -398,19 +398,19 @@
         }
 
         /* ---------- Question screen ---------- */
-        .progress-container { margin: 15px 0; }
+        .progress-container { margin: 0 0 clamp(6px, 1.4vh, 14px); }
 
         .progress-label {
             text-align: center;
             font-weight: bold;
             color: #667eea;
-            margin-bottom: 8px;
-            font-size: 16px;
+            margin-bottom: clamp(3px, 0.9vh, 8px);
+            font-size: clamp(13px, 2vh, 16px);
         }
 
         .progress-bar {
             width: 100%;
-            height: 18px;
+            height: clamp(10px, 1.8vh, 18px);
             background: #e0e0e0;
             border-radius: 10px;
             overflow: hidden;
@@ -422,45 +422,82 @@
             transition: width 0.3s;
         }
 
-        .question-display { text-align: center; padding: 15px 10px; }
-
-        .question-text {
-            font-size: 48px;
-            color: #333;
-            margin: 20px 0;
-            font-weight: 600;
+        /* The run screen lays out as columns so the tower, the question and the keypad
+           sit side by side and a whole round fits on one screen. Stacked by default;
+           the columns switch on inside the .quiz-fit media query further down. */
+        .quiz-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
         }
 
-        .timer { font-size: 24px; color: #667eea; font-weight: bold; margin-bottom: 10px; }
+        .quiz-col {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+        }
+
+        /* The tower column only shows during a Sky Climber run. */
+        .quiz-col-scene { display: none; width: 100%; max-width: 320px; }
+        body.mode-climb .quiz-col-scene { display: flex; }
+
+        .quiz-col-question {
+            width: 100%;
+            max-width: 420px;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: clamp(2px, 0.8vh, 10px);
+        }
+
+        .quiz-col-pad {
+            align-items: center;
+            justify-content: center;
+            gap: clamp(6px, 1.4vh, 14px);
+        }
+
+        .question-text {
+            font-size: clamp(28px, 5.2vh, 42px);
+            color: #333;
+            margin: 0;
+            font-weight: 600;
+            line-height: 1.15;
+        }
+
+        .timer { font-size: clamp(15px, 2.5vh, 24px); color: #667eea; font-weight: bold; margin: 0; }
         .timer-hidden { visibility: hidden; }
 
-        .answer-input {
-            font-size: 32px;
+        input.answer-input {
+            font-size: clamp(20px, 3.6vh, 32px);
             text-align: center;
             max-width: 200px;
             margin: 0 auto;
+            padding: clamp(6px, 1.2vh, 12px);
         }
 
         .number-pad {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            max-width: 280px;
-            margin: 20px auto;
+            gap: clamp(5px, 1vh, 10px);
+            width: clamp(186px, 29vh, 280px);
+            max-width: 100%;
+            margin: 0;
         }
 
         .num-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 20px;
+            padding: 0;
             border-radius: 12px;
-            font-size: 28px;
+            font-size: clamp(18px, 3vh, 28px);
             font-weight: bold;
             cursor: pointer;
             transition: all 0.15s;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            min-height: 70px;
+            min-height: clamp(40px, 6.2vh, 70px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -470,28 +507,37 @@
         .num-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4); }
         .num-btn:active { transform: translateY(0); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        .num-btn.clear-btn { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); font-size: 18px; }
-        .num-btn.backspace-btn { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #333; font-size: 22px; }
+        .num-btn.clear-btn { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); font-size: clamp(12px, 2vh, 18px); }
+        .num-btn.backspace-btn { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #333; font-size: clamp(15px, 2.4vh, 22px); }
         .num-btn.zero-btn { grid-column: 2; }
 
-        .input-method-hint { font-size: 12px; color: #888; margin-top: 5px; }
+        .input-method-hint { font-size: clamp(10px, 1.7vh, 12px); color: #888; margin: 0; }
 
         .mastery-progress {
             background: #e3f2fd;
             border: 2px solid #2196f3;
-            padding: 10px;
+            padding: clamp(5px, 1vh, 10px);
             border-radius: 8px;
-            margin: 10px 0;
+            margin: 0;
             text-align: center;
-            font-size: 14px;
+            font-size: clamp(11px, 1.9vh, 14px);
         }
 
-        .answer-time-display { font-size: 18px; color: #667eea; margin-top: 5px; }
+        .feedback-line {
+            font-size: clamp(16px, 2.7vh, 24px);
+            font-weight: bold;
+            min-height: 1.4em;
+            margin-top: clamp(4px, 1vh, 12px);
+        }
+
+        .answer-time-display { font-size: clamp(13px, 2vh, 18px); color: #667eea; min-height: 1.4em; }
+
+        .achievement-line { min-height: clamp(24px, 3.6vh, 35px); }
 
         .achievement-indicator {
-            font-size: 14px;
-            margin-top: 8px;
-            padding: 5px 12px;
+            font-size: clamp(11px, 1.9vh, 14px);
+            margin-top: clamp(2px, 0.8vh, 8px);
+            padding: clamp(3px, 0.7vh, 5px) clamp(8px, 1.4vh, 12px);
             border-radius: 15px;
             display: inline-block;
         }
@@ -675,7 +721,9 @@
         .climb-scene {
             --h: 0;
             position: relative;
-            height: 280px;
+            height: 260px;
+            min-height: 150px;
+            flex: 1 1 auto;
             border-radius: 16px;
             overflow: hidden;
             background: linear-gradient(180deg, #070b1f 0%, #14205a 45%, #3b2f6e 78%, #6d3f78 100%);
@@ -917,7 +965,7 @@
 
         @keyframes confettiFall {
             0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(310px) rotate(540deg); opacity: 0.2; }
+            100% { transform: translateY(var(--fall, 310px)) rotate(540deg); opacity: 0.2; }
         }
 
         .climb-toast {
@@ -942,17 +990,20 @@
         }
 
         .fact-tracker {
-            display: flex;
+            display: none;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: clamp(3px, 0.7vh, 6px);
             justify-content: center;
-            margin: 4px 0 10px;
+            margin: clamp(5px, 1vh, 10px) 0 0;
+            flex: 0 0 auto;
         }
 
+        body.mode-climb .fact-tracker { display: flex; }
+
         .fact-pill {
-            font-size: 12px;
+            font-size: clamp(10px, 1.7vh, 12px);
             font-weight: bold;
-            padding: 4px 9px;
+            padding: clamp(2px, 0.6vh, 4px) clamp(6px, 1.2vh, 9px);
             border-radius: 14px;
             background: #eef0f8;
             color: #5a6180;
@@ -973,18 +1024,136 @@
             text-decoration: line-through;
         }
 
+        /* ---------- Run screen: fit the whole round on one screen ----------
+           body.quiz-fit is set by showScreen() while the question screen is up. The
+           page becomes exactly one viewport tall and the run screen lays itself out
+           as tower | question | keypad, so nothing spills below the fold. Anything
+           narrower or shorter than this falls back to the stacked, scrolling layout. */
+        @media (min-width: 760px) and (min-height: 320px) {
+            body.quiz-fit {
+                height: 100vh;
+                height: 100dvh;
+                overflow: auto;
+                padding: clamp(6px, 1.5vh, 20px);
+                display: flex;
+                /* "safe" keeps the card reachable if it ever does outgrow the window;
+                   browsers without it fall back to stretching the card, which also fits. */
+                align-items: safe center;
+            }
+
+            body.quiz-fit .container {
+                width: 100%;
+                max-width: 1180px;
+                height: auto;
+                max-height: 100%;
+                padding: clamp(10px, 2vh, 26px) clamp(16px, 2vw, 30px);
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+
+            body.quiz-fit h1 {
+                font-size: clamp(17px, 3vh, 30px);
+                margin-bottom: clamp(4px, 1.2vh, 18px);
+            }
+
+            body.quiz-fit .progress-container { width: 100%; max-width: 760px; margin-inline: auto; }
+
+            /* No tower to share the screen with, so the card narrows and the keys grow. */
+            body.quiz-fit:not(.mode-climb) .container { max-width: 900px; }
+            body.quiz-fit:not(.mode-climb) .question-text { font-size: clamp(34px, 7vh, 56px); }
+            body.quiz-fit:not(.mode-climb) .number-pad { width: clamp(220px, 36vh, 320px); }
+            body.quiz-fit:not(.mode-climb) .num-btn { min-height: clamp(48px, 7.8vh, 80px); }
+
+            body.quiz-fit #question-screen.active {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+            }
+
+            body.quiz-fit .quiz-layout {
+                flex: 1;
+                min-height: 0;
+                flex-direction: row;
+                align-items: stretch;
+                justify-content: center;
+                gap: clamp(14px, 2.4vw, 34px);
+            }
+
+            body.quiz-fit .quiz-col-scene {
+                flex: 0 1 clamp(170px, 22vw, 320px);
+                width: auto;
+                max-width: none;
+                min-width: 130px;
+            }
+
+            body.quiz-fit .quiz-col-question {
+                flex: 1 1 320px;
+                min-width: 310px;
+                max-width: 440px;
+            }
+
+            body.quiz-fit .quiz-col-pad { flex: 0 0 auto; }
+
+            body.quiz-fit .quiz-col-pad .btn {
+                margin: 0;
+                padding: clamp(7px, 1.4vh, 12px) clamp(18px, 3vw, 30px);
+                font-size: clamp(13px, 2.1vh, 16px);
+            }
+
+            body.quiz-fit .climb-scene { height: clamp(150px, 52vh, 420px); flex: 0 0 auto; margin: 0; }
+        }
+
+        /* Too narrow or too short for three columns: keep the stack, but let it try to
+           fill exactly one screen. overflow stays auto here so that a phone that really
+           cannot fit the keypad scrolls instead of clipping the buttons off. */
+        @media (max-width: 759px), (max-height: 319px) {
+            body.quiz-fit {
+                min-height: 100vh;
+                min-height: 100dvh;
+                padding: clamp(6px, 1.2vh, 12px);
+                display: flex;
+            }
+
+            body.quiz-fit .container {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+                padding: clamp(8px, 1.6vh, 18px) clamp(10px, 3vw, 18px);
+            }
+
+            body.quiz-fit h1 {
+                font-size: clamp(15px, 2.6vh, 22px);
+                margin-bottom: clamp(4px, 1vh, 10px);
+            }
+
+            body.quiz-fit #question-screen.active {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
+                min-height: 0;
+            }
+
+            body.quiz-fit .quiz-layout {
+                flex: 1;
+                min-height: 0;
+                gap: clamp(4px, 1vh, 10px);
+            }
+
+            body.quiz-fit .quiz-col-scene { flex: 1 1 auto; min-height: 0; }
+            body.quiz-fit .climb-scene { height: auto; min-height: 110px; margin: 0; }
+            body.quiz-fit .num-btn { min-height: clamp(36px, 5.6vh, 70px); }
+            body.quiz-fit .quiz-col-pad .btn { padding: 8px 22px; font-size: 14px; margin: 0; }
+        }
+
         /* ---------- Responsive ---------- */
         @media (max-width: 600px) {
             body { padding: 10px; }
             .container { padding: 20px 16px; }
             h1 { font-size: 24px; }
-            .question-text { font-size: 36px; }
-            .answer-input { font-size: 24px; }
             .countdown-number { font-size: 80px; }
-            .number-pad { max-width: 240px; gap: 8px; }
-            .num-btn { padding: 15px; font-size: 24px; min-height: 60px; }
-            .num-btn.clear-btn { font-size: 14px; }
-            .num-btn.backspace-btn { font-size: 18px; }
             .climb-scene { height: 230px; }
             .climb-tower { width: 108px; }
             .tower-window { width: 22px; }
@@ -1233,67 +1402,69 @@
                 </div>
             </div>
 
-            <!-- Sky Climber scene (multiplication mode only) -->
-            <div class="climb-scene" id="climb-scene" style="display:none;">
-                <div class="climb-stars"></div>
-                <div class="climb-moon"></div>
-                <div class="climb-skyline"></div>
-                <div class="climb-tower">
-                    <div class="tower-roof"></div>
-                    <div class="tower-floors" id="tower-floors"></div>
-                </div>
-                <div class="climb-flag" id="climb-flag">🚩</div>
-                <div class="climb-web" id="climb-web"></div>
-                <div class="climber" id="climber">
-                    <svg viewBox="0 0 46 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <g class="climber-body">
-                            <path d="M15 22 C 9 18, 7 12, 9 7" stroke="#e02a2a" stroke-width="5" fill="none" stroke-linecap="round"/>
-                            <path d="M31 22 C 37 18, 39 12, 37 7" stroke="#e02a2a" stroke-width="5" fill="none" stroke-linecap="round"/>
-                            <path d="M18 34 C 13 40, 12 45, 15 49" stroke="#1a4fa0" stroke-width="6" fill="none" stroke-linecap="round"/>
-                            <path d="M28 34 C 33 40, 34 45, 31 49" stroke="#1a4fa0" stroke-width="6" fill="none" stroke-linecap="round"/>
-                            <path d="M23 18 C 30 18, 32 24, 31 30 C 30 35, 26 37, 23 37 C 20 37, 16 35, 15 30 C 14 24, 16 18, 23 18 Z" fill="#e02a2a"/>
-                            <path d="M23 24 C 27 24, 30 27, 31 30 C 30 35, 26 37, 23 37 C 20 37, 16 35, 15 30 C 16 27, 19 24, 23 24 Z" fill="#1a4fa0"/>
-                            <ellipse cx="23" cy="12" rx="9" ry="8" fill="#e02a2a"/>
-                            <path d="M23 4 L23 20 M15 8 L31 8 M15 16 L31 16" stroke="rgba(0,0,0,0.18)" stroke-width="0.7"/>
-                            <path d="M17 11 q3 -4 6 -1 q-2 4 -6 1 Z" fill="#ffffff" stroke="#111111" stroke-width="0.8"/>
-                            <path d="M29 11 q-3 -4 -6 -1 q2 4 6 1 Z" fill="#ffffff" stroke="#111111" stroke-width="0.8"/>
-                        </g>
-                    </svg>
-                </div>
-                <div class="climb-hud" id="climb-hud">Floor 0 / 12 · 0 cleared</div>
-                <div class="climb-caption" id="climb-caption">Under 3s = full floor · under 6s = half floor</div>
-                <div class="climb-toast" id="climb-toast"></div>
-                <div class="confetti-layer" id="confetti-layer"></div>
-            </div>
-
-            <div class="fact-tracker" id="fact-tracker" style="display:none;"></div>
-            <div id="run-status-display"></div>
-
-            <div class="question-display">
-                <div class="timer timer-hidden" id="timer">Time: 0.0s</div>
-                <div class="question-text" id="question-text">5 + 3 = ?</div>
-                <input type="number" class="answer-input" id="answer-input" oninput="checkAnswer()" inputmode="none">
-                <div class="input-method-hint">Type or tap the numbers below</div>
-
-                <div class="number-pad">
-                    <button class="num-btn" onclick="numPadInput('1')">1</button>
-                    <button class="num-btn" onclick="numPadInput('2')">2</button>
-                    <button class="num-btn" onclick="numPadInput('3')">3</button>
-                    <button class="num-btn" onclick="numPadInput('4')">4</button>
-                    <button class="num-btn" onclick="numPadInput('5')">5</button>
-                    <button class="num-btn" onclick="numPadInput('6')">6</button>
-                    <button class="num-btn" onclick="numPadInput('7')">7</button>
-                    <button class="num-btn" onclick="numPadInput('8')">8</button>
-                    <button class="num-btn" onclick="numPadInput('9')">9</button>
-                    <button class="num-btn clear-btn" onclick="numPadClear()">Clear</button>
-                    <button class="num-btn zero-btn" onclick="numPadInput('0')">0</button>
-                    <button class="num-btn backspace-btn" onclick="numPadBackspace()">⌫</button>
+            <div class="quiz-layout">
+                <!-- Sky Climber column (multiplication mode only) -->
+                <div class="quiz-col quiz-col-scene">
+                    <div class="climb-scene" id="climb-scene">
+                        <div class="climb-stars"></div>
+                        <div class="climb-moon"></div>
+                        <div class="climb-skyline"></div>
+                        <div class="climb-tower">
+                            <div class="tower-roof"></div>
+                            <div class="tower-floors" id="tower-floors"></div>
+                        </div>
+                        <div class="climb-flag" id="climb-flag">🚩</div>
+                        <div class="climb-web" id="climb-web"></div>
+                        <div class="climber" id="climber">
+                            <svg viewBox="0 0 46 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <g class="climber-body">
+                                    <path d="M15 22 C 9 18, 7 12, 9 7" stroke="#e02a2a" stroke-width="5" fill="none" stroke-linecap="round"/>
+                                    <path d="M31 22 C 37 18, 39 12, 37 7" stroke="#e02a2a" stroke-width="5" fill="none" stroke-linecap="round"/>
+                                    <path d="M18 34 C 13 40, 12 45, 15 49" stroke="#1a4fa0" stroke-width="6" fill="none" stroke-linecap="round"/>
+                                    <path d="M28 34 C 33 40, 34 45, 31 49" stroke="#1a4fa0" stroke-width="6" fill="none" stroke-linecap="round"/>
+                                    <path d="M23 18 C 30 18, 32 24, 31 30 C 30 35, 26 37, 23 37 C 20 37, 16 35, 15 30 C 14 24, 16 18, 23 18 Z" fill="#e02a2a"/>
+                                    <path d="M23 24 C 27 24, 30 27, 31 30 C 30 35, 26 37, 23 37 C 20 37, 16 35, 15 30 C 16 27, 19 24, 23 24 Z" fill="#1a4fa0"/>
+                                    <ellipse cx="23" cy="12" rx="9" ry="8" fill="#e02a2a"/>
+                                    <path d="M23 4 L23 20 M15 8 L31 8 M15 16 L31 16" stroke="rgba(0,0,0,0.18)" stroke-width="0.7"/>
+                                    <path d="M17 11 q3 -4 6 -1 q-2 4 -6 1 Z" fill="#ffffff" stroke="#111111" stroke-width="0.8"/>
+                                    <path d="M29 11 q-3 -4 -6 -1 q2 4 6 1 Z" fill="#ffffff" stroke="#111111" stroke-width="0.8"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="climb-hud" id="climb-hud">Floor 0 / 12 · 0 cleared</div>
+                        <div class="climb-caption" id="climb-caption">Under 3s = full floor · under 6s = half floor</div>
+                        <div class="climb-toast" id="climb-toast"></div>
+                        <div class="confetti-layer" id="confetti-layer"></div>
+                    </div>
+                    <div class="fact-tracker" id="fact-tracker"></div>
                 </div>
 
-                <div id="feedback" style="margin-top:20px; font-size:24px; font-weight:bold; min-height:30px;"></div>
-                <div id="answer-time" class="answer-time-display" style="min-height:25px;"></div>
-                <div id="achievement-display" style="min-height:35px;"></div>
-                <div style="margin-top:20px;">
+                <div class="quiz-col quiz-col-question">
+                    <div id="run-status-display"></div>
+                    <div class="timer timer-hidden" id="timer">Time: 0.0s</div>
+                    <div class="question-text" id="question-text">5 + 3 = ?</div>
+                    <input type="number" class="answer-input" id="answer-input" oninput="checkAnswer()" inputmode="none">
+                    <div class="input-method-hint">Type or tap the numbers</div>
+                    <div class="feedback-line" id="feedback"></div>
+                    <div id="answer-time" class="answer-time-display"></div>
+                    <div class="achievement-line" id="achievement-display"></div>
+                </div>
+
+                <div class="quiz-col quiz-col-pad">
+                    <div class="number-pad">
+                        <button class="num-btn" onclick="numPadInput('1')">1</button>
+                        <button class="num-btn" onclick="numPadInput('2')">2</button>
+                        <button class="num-btn" onclick="numPadInput('3')">3</button>
+                        <button class="num-btn" onclick="numPadInput('4')">4</button>
+                        <button class="num-btn" onclick="numPadInput('5')">5</button>
+                        <button class="num-btn" onclick="numPadInput('6')">6</button>
+                        <button class="num-btn" onclick="numPadInput('7')">7</button>
+                        <button class="num-btn" onclick="numPadInput('8')">8</button>
+                        <button class="num-btn" onclick="numPadInput('9')">9</button>
+                        <button class="num-btn clear-btn" onclick="numPadClear()">Clear</button>
+                        <button class="num-btn zero-btn" onclick="numPadInput('0')">0</button>
+                        <button class="num-btn backspace-btn" onclick="numPadBackspace()">⌫</button>
+                    </div>
                     <button class="btn btn-secondary" onclick="endSession()">End Session</button>
                 </div>
             </div>
@@ -1463,6 +1634,7 @@
             document.querySelectorAll('.screen').forEach(function (el) { el.classList.remove('active'); });
             const target = $(id);
             if (target) target.classList.add('active');
+            document.body.classList.toggle('quiz-fit', id === 'question-screen');
             window.scrollTo(0, 0);
         }
 
@@ -2271,8 +2443,7 @@
          * MATH FACTS LEVELS RUN
          * ===================================================================*/
         function startLevelsRun() {
-            $('climb-scene').style.display = 'none';
-            $('fact-tracker').style.display = 'none';
+            document.body.classList.remove('mode-climb');
 
             questions = buildLevelQuestions(runKey);
 
@@ -2330,8 +2501,7 @@
          * SKY CLIMBER (MULTIPLICATION) RUN
          * ===================================================================*/
         function startMultRun() {
-            $('climb-scene').style.display = '';
-            $('fact-tracker').style.display = '';
+            document.body.classList.add('mode-climb');
             $('run-status-display').innerHTML = '';
 
             multPool = allFactors();
@@ -2440,6 +2610,7 @@
 
         function celebrate() {
             const layer = $('confetti-layer');
+            layer.style.setProperty('--fall', ($('climb-scene').offsetHeight + 40) + 'px');
             const pieces = ['🎉', '⭐', '✨', '🎊', '🏆', '💫'];
             let html = '';
             for (let i = 0; i < 26; i++) {
@@ -2672,7 +2843,8 @@
             if (runKind === 'mult') {
                 slipClimber();
                 climbToast('😬 Hold on!');
-                $('climb-caption').textContent = 'Whew — you kept your grip. Try that one again!';
+                $('climb-caption').textContent = 'Under ' + MULT_FULL_SECONDS + 's = full floor \u00b7 under ' +
+                    MULT_HALF_SECONDS + 's = half floor';
             }
 
             recordAnswer(question, userAnswer, false, null, timeTaken);
