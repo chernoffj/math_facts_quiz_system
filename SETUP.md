@@ -40,8 +40,26 @@ teachers/{uid}            name, firstName, lastName, email, code, classGrade, cr
 classCodes/{CODE}         teacherUid, teacherName, grade
 students/{pushId}         name, avatar, teacherUid, teacherCode, grade, createdAt
   levels/{A..E}           unlocked, mastery, masteredQuestions{key:tier}, attempts{}
-  mult/{t2..t10}          mastery, masteredFacts{f1..f12:tier}, bestCleared, attempts{}
+  mult/{t2..t10}          mastery, masteredFacts{f1..f12:tier}, bestCleared, bestFloors, attempts{}
 ```
+
+`bestCleared` is the most facts cleared in a single climb; `bestFloors` is the highest the climber
+reached in a single climb (it can be a half number). Records written before `bestFloors` existed
+still load — it defaults to 0 and fills in on the next climb.
+
+## 3b. Sky Climber rules
+
+Every climb is **exactly 20 questions**, no matter how fast or accurate the student is.
+
+| Answer | Climb | Fact |
+| --- | --- | --- |
+| Correct in under 3s (mastery speed) | full floor | cleared for the rest of the run |
+| Correct in under 6s | half a floor | stays in the pool and comes back around |
+| Correct but slower, or wrong | no climb | stays in the pool |
+
+Each fact is worth at most one floor per climb, so re-answering a fact cannot inflate the tower.
+Once all 12 facts are cleared the run keeps going, recycling cleared facts until 20 questions are
+done — those extra reps still count toward the per-fact tier records.
 
 The full question set for each level is now generated in the browser instead of being stored on
 every student record, which makes student records much smaller.
