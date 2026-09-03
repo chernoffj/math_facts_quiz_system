@@ -1,0 +1,28 @@
+{
+  "rules": {
+    "classCodes": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password' && (!data.exists() || data.child('teacherUid').val() === auth.uid) && (!newData.exists() || newData.child('teacherUid').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['teacherUid'])"
+      }
+    },
+
+    "teachers": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider === 'password'",
+        ".validate": "newData.hasChildren(['name', 'email', 'code', 'classGrade'])"
+      }
+    },
+
+    "students": {
+      ".read": "auth != null && query.orderByChild === 'teacherUid' && query.equalTo != null",
+      ".indexOn": ["teacherUid"],
+      "$studentId": {
+        ".read": "auth != null",
+        ".write": "auth != null && ( (auth.token.firebase.sign_in_provider === 'password' && (data.child('teacherUid').val() === auth.uid || newData.child('teacherUid').val() === auth.uid)) || (auth.token.firebase.sign_in_provider === 'anonymous' && data.exists() && newData.exists() && newData.child('teacherUid').val() === data.child('teacherUid').val() && newData.child('name').val() === data.child('name').val()) )"
+      }
+    }
+  }
+}
