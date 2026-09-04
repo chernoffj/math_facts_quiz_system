@@ -872,20 +872,21 @@
             right: 8px;
             display: flex;
             flex-direction: column-reverse;
-            gap: 3px;
+            gap: 2px;
         }
 
+        /* min-height stays 0 so 20 floors always fit, however short the scene gets. */
         .tower-floor {
-            flex: 1;
+            flex: 1 1 0;
             display: flex;
-            gap: 7px;
+            gap: 6px;
             justify-content: center;
             align-items: stretch;
-            min-height: 6px;
+            min-height: 0;
         }
 
         .tower-window {
-            width: 28px;
+            width: 24px;
             background: #414f92;
             border-radius: 3px;
             transition: background 0.35s, box-shadow 0.35s;
@@ -1198,7 +1199,8 @@
             }
 
             body.quiz-fit .quiz-col-scene { flex: 1 1 auto; min-height: 0; }
-            body.quiz-fit .climb-scene { height: auto; min-height: 110px; margin: 0; }
+            /* Twenty floors need real height to stay countable once the layout stacks. */
+            body.quiz-fit .climb-scene { height: auto; min-height: clamp(160px, 26vh, 260px); margin: 0; }
             body.quiz-fit .num-btn { min-height: clamp(36px, 5.6vh, 70px); }
             body.quiz-fit .quiz-col-pad .btn { padding: 8px 22px; font-size: 14px; margin: 0; }
         }
@@ -1211,6 +1213,7 @@
             .countdown-number { font-size: 80px; }
             .climb-scene { height: 230px; }
             .climb-tower { width: 108px; }
+            .tower-floors { gap: 1px; }
             .tower-window { width: 22px; }
             .climb-web, .climber { left: calc(50% + 58px); }
             .code-display { font-size: 26px; letter-spacing: 3px; }
@@ -1253,7 +1256,7 @@
                         <li><strong>Type your 4-number PIN.</strong> The first time you log in you get to make one up — keep it secret, and ask your teacher if you ever forget it.</li>
                         <li><strong>Pick your avatar</strong> the first time — you can change it any time from the menu.</li>
                         <li><strong>Math Facts Levels:</strong> answer quickly and correctly to master every fact and unlock the next level.</li>
-                        <li><strong>Sky Climber (×2 to ×10):</strong> every climb is 20 questions. Answer in under <strong>3 seconds</strong> to climb a full floor and clear the fact, or under <strong>6 seconds</strong> to climb half a floor.</li>
+                        <li><strong>Sky Climber (×2 to ×10):</strong> every climb is 20 questions on a 20-floor tower. Answer in under <strong>3 seconds</strong> to climb a full floor, or under <strong>6 seconds</strong> for half a floor. The first 12 questions are the whole table; the last 8 bring back the facts you missed, or your slowest ones.</li>
                     </ul>
                 </div>
             </div>
@@ -1459,9 +1462,10 @@
             </div>
             <h2 style="margin-bottom:6px;">🕸️ Sky Climber</h2>
             <p style="color:#666; margin-bottom:10px;">
-                Every climb is <strong>20 questions</strong>. Answer in under <strong>3 seconds</strong> and the
-                climber goes up a <strong>full floor</strong> and that fact is cleared; under <strong>6 seconds</strong>
-                and the climber goes up <strong>half a floor</strong> and the fact comes back around. Clear all 12 to reach the roof!
+                Every climb is <strong>20 questions</strong> on a <strong>20-floor tower</strong>. Answer in under
+                <strong>3 seconds</strong> and the climber goes up a <strong>full floor</strong>; under
+                <strong>6 seconds</strong> and it goes up <strong>half a floor</strong>. The first 12 questions cover the
+                whole table, then the 8 you missed — or answered slowest — come back around. Nail all 20 to reach the roof!
             </p>
             <div class="module-grid" id="module-grid"></div>
         </div>
@@ -1516,7 +1520,7 @@
                                 </g>
                             </svg>
                         </div>
-                        <div class="climb-hud" id="climb-hud">Floor 0 / 12 · 0 cleared</div>
+                        <div class="climb-hud" id="climb-hud">Floor 0 / 20 · 0 cleared</div>
                         <div class="climb-caption" id="climb-caption">Under 3s = full floor · under 6s = half floor</div>
                         <div class="climb-toast" id="climb-toast"></div>
                         <div class="confetti-layer" id="confetti-layer"></div>
@@ -1655,8 +1659,13 @@
         const MODULE_TABLES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
         const FACTS_PER_MODULE = 12;          // N x 1 .. N x 12
         const MULT_QUESTIONS_PER_RUN = 20;    // every climb runs all 20 questions, no early exit
-        const MULT_FULL_SECONDS = 3;          // mastery speed: full-floor climb and the fact is cleared
-        const MULT_HALF_SECONDS = 6;          // half-speed climb: half a floor, fact stays in the pool
+        // The 20 questions are one pass over the whole table, then 8 targeted repeats.
+        const MULT_BASE_QUESTIONS = FACTS_PER_MODULE;
+        const MULT_REPEAT_QUESTIONS = MULT_QUESTIONS_PER_RUN - MULT_BASE_QUESTIONS;
+        // Every question is worth its own floor, so a flawless climb tops out a 20-storey tower.
+        const MULT_FLOORS_PER_RUN = MULT_QUESTIONS_PER_RUN;
+        const MULT_FULL_SECONDS = 3;          // mastery speed: full-floor climb, and the fact counts as cleared
+        const MULT_HALF_SECONDS = 6;          // half-speed: half a floor, and the fact is not cleared
         const MULT_TIMINGS = { MASTERY: 3, ACCOMPLISHED: 6, BASIC: 8 };
 
         const TIER_ORDER = { BASIC: 1, ACCOMPLISHED: 2, MASTERY: 3 };
@@ -1704,15 +1713,15 @@
         let pinBusy = false;
 
         // multiplication run state
-        let multPool = [];               // factors not yet cleared at mastery speed this run
-        let multCleared = [];            // factors cleared this run (answered under MULT_FULL_SECONDS)
-        let multCredit = {};             // factor -> floors already earned this run (0.5 or 1)
-        let multProgress = 0;            // total floors climbed this run (sum of multCredit)
-        let multQueue = [];              // shuffled draw order; refilled/recycled as it empties
+        let multSequence = [];           // factors for this climb: 12 shuffled facts, then 8 repeats
+        let multCleared = [];            // factors answered under MULT_FULL_SECONDS at least once this run
+        let multCredit = {};             // factor -> best floor credit earned on it this run (0.5 or 1)
+        let multProgress = 0;            // total floors climbed this run (one floor per question, max)
         let multLastFactor = null;       // avoid asking the same fact twice in a row
         let multAsked = 0;
         let multCurrent = null;          // { table, factor, answer, display }
-        let multTowerCelebrated = false; // confetti fires once per run, not on every recycled fact
+        let multTowerCelebrated = false; // confetti fires once per run, when the roof is reached
+        let multFactsCelebrated = false; // the "all 12 facts" toast fires once per run
 
         /* =====================================================================
          * SMALL HELPERS
@@ -1852,7 +1861,10 @@
         function blankMult() {
             const data = {};
             MODULE_TABLES.forEach(function (table) {
-                data[moduleKey(table)] = { mastery: null, masteredFacts: {}, bestCleared: 0, bestFloors: 0, attempts: {} };
+                data[moduleKey(table)] = {
+                    mastery: null, masteredFacts: {}, bestCleared: 0,
+                    bestFloors: 0, bestFloorsOutOf: MULT_FLOORS_PER_RUN, attempts: {}
+                };
             });
             return data;
         }
@@ -1880,6 +1892,8 @@
                     masteredFacts: mod.masteredFacts || {},
                     bestCleared: mod.bestCleared || 0,
                     bestFloors: mod.bestFloors || 0,
+                    // Climbs recorded before the tower grew were scored out of 12 floors.
+                    bestFloorsOutOf: mod.bestFloorsOutOf || FACTS_PER_MODULE,
                     attempts: mod.attempts || {}
                 };
             });
@@ -2833,17 +2847,19 @@
             document.body.classList.add('mode-climb');
             $('run-status-display').innerHTML = '';
 
-            multPool = allFactors();
+            // The opening 12 questions are the whole table, shuffled. The last 8 are chosen once
+            // that pass is done, from the facts that actually gave the student trouble.
+            multSequence = shuffle(allFactors());
             multCleared = [];
             multCredit = {};
             multProgress = 0;
-            multQueue = [];
             multLastFactor = null;
             multAsked = 0;
             multCurrent = null;
             multTowerCelebrated = false;
+            multFactsCelebrated = false;
 
-            buildTower(FACTS_PER_MODULE);
+            buildTower(MULT_FLOORS_PER_RUN);
             renderFactTracker();
             updateClimber(null);
             clearTimeout(climberAnimationTimer);
@@ -2873,28 +2889,31 @@
 
         // Floors climbed this run, capped at the top of the tower.
         function climbFloors() {
-            return Math.min(multProgress, FACTS_PER_MODULE);
+            return Math.min(multProgress, MULT_FLOORS_PER_RUN);
         }
 
         function formatFloors(value) {
             return value % 1 === 0 ? String(value) : value.toFixed(1);
         }
 
-        // Each fact is worth at most one floor: 0.5 at half speed, 1 at mastery speed. Returning the
-        // floors actually gained keeps repeats of the same fact from inflating the climb.
-        function awardClimb(factor, credit) {
-            const before = multCredit[factor] || 0;
-            if (credit <= before) return 0;
-            multCredit[factor] = credit;
-            multProgress += credit - before;
-            return credit - before;
+        // Every one of the 20 questions is worth its own floor: 1 at mastery speed, 0.5 at half
+        // speed, 0 otherwise. 20 questions, 20 floors, so a flawless climb reaches the roof.
+        function climbFloor(credit, mode) {
+            multProgress = Math.min(multProgress + credit, MULT_FLOORS_PER_RUN);
+            renderFactTracker();
+            updateClimber(mode);
+        }
+
+        // The fact tracker pills show the best a fact has been answered so far this climb.
+        function noteFactCredit(factor, credit) {
+            if (credit > (multCredit[factor] || 0)) multCredit[factor] = credit;
         }
 
         // mode: null (no animation), 'full' (mastery jump) or 'half' (half-speed pull-up)
         function updateClimber(mode) {
             const floors = climbFloors();
-            $('climb-scene').style.setProperty('--h', String(floors / FACTS_PER_MODULE));
-            $('climb-hud').textContent = 'Floor ' + formatFloors(floors) + ' / ' + FACTS_PER_MODULE +
+            $('climb-scene').style.setProperty('--h', String(floors / MULT_FLOORS_PER_RUN));
+            $('climb-hud').textContent = 'Floor ' + formatFloors(floors) + ' / ' + MULT_FLOORS_PER_RUN +
                 ' \u00b7 ' + multCleared.length + ' cleared';
 
             const whole = Math.floor(floors);
@@ -2907,7 +2926,7 @@
             if (mode === 'full') playClimberAnimation('jump', 620);
             else if (mode === 'half') playClimberAnimation('half-jump', 620);
 
-            if (floors >= FACTS_PER_MODULE) {
+            if (floors >= MULT_FLOORS_PER_RUN) {
                 $('climb-flag').classList.add('reached');
             }
         }
@@ -2966,31 +2985,38 @@
             tracker.innerHTML = html;
         }
 
-        // Refills the draw order. While facts are still uncleared we draw only from those; once the
-        // pool is empty the climb keeps going by recycling the facts already cleared this run.
-        function refillMultQueue() {
-            const source = multPool.length ? multPool.slice()
-                         : (multCleared.length ? multCleared.slice() : allFactors());
-            multQueue = shuffle(source);
-            if (multQueue.length > 1 && multQueue[0] === multLastFactor) {
-                multQueue.push(multQueue.shift());
+        // Picks the 8 repeat questions once the opening pass over the table is done. Facts the
+        // student got wrong come back first; after those - or instead of them, when nothing was
+        // missed - the slowest answers come back. `answers` is index-aligned with multSequence.
+        function buildMultRepeats() {
+            const ranked = multSequence.slice(0, MULT_BASE_QUESTIONS).map(function (factor, i) {
+                const answer = answers[i] || {};
+                return {
+                    factor: factor,
+                    correct: answer.correct === true,
+                    time: typeof answer.time === 'number' ? answer.time : 0
+                };
+            }).sort(function (a, b) {
+                if (a.correct !== b.correct) return a.correct ? 1 : -1;   // missed facts first
+                return b.time - a.time;                                   // then the slowest
+            });
+
+            const repeats = ranked.slice(0, MULT_REPEAT_QUESTIONS).map(function (r) { return r.factor; });
+            // Only reachable if a question somehow went unanswered; keeps the climb at 20 questions.
+            while (repeats.length < MULT_REPEAT_QUESTIONS && ranked.length) {
+                repeats.push(ranked[repeats.length % ranked.length].factor);
             }
+            // Don't ask the same fact twice in a row across the seam into the repeats.
+            if (repeats.length > 1 && repeats[0] === multLastFactor) {
+                const first = repeats[0];
+                repeats[0] = repeats[1];
+                repeats[1] = first;
+            }
+            return repeats;
         }
 
-        function drawMultFactor() {
-            if (!multQueue.length) refillMultQueue();
-            // Drop anything cleared since the queue was built so uncleared facts come around first.
-            while (multQueue.length && multPool.length && multPool.indexOf(multQueue[0]) === -1) {
-                multQueue.shift();
-            }
-            if (!multQueue.length) refillMultQueue();
-            const factor = multQueue.shift();
+        function nextMultQuestion(factor) {
             multLastFactor = factor;
-            return factor;
-        }
-
-        function nextMultQuestion() {
-            const factor = drawMultFactor();
             // Show the fact in either order so students see the commutative pair.
             const flipped = Math.random() < 0.5;
             multCurrent = {
@@ -3012,8 +3038,12 @@
                     finishRun();
                     return;
                 }
+                // The repeats are only known once the opening pass has been answered.
+                if (multSequence.length <= multAsked) {
+                    multSequence = multSequence.concat(buildMultRepeats());
+                }
+                const question = nextMultQuestion(multSequence[multAsked]);
                 multAsked++;
-                const question = nextMultQuestion();
                 $('question-text').textContent = question.display + ' = ?';
                 $('progress-label').textContent = 'Question ' + multAsked + ' of ' + MULT_QUESTIONS_PER_RUN;
                 $('progress-fill').style.width = (((multAsked - 1) / MULT_QUESTIONS_PER_RUN) * 100) + '%';
@@ -3088,19 +3118,16 @@
                 const wasCleared = multCleared.indexOf(question.factor) !== -1;
 
                 if (timeTaken <= MULT_FULL_SECONDS) {
-                    // Mastery speed: full-floor climb and the fact is cleared out of the pool.
-                    const index = multPool.indexOf(question.factor);
-                    if (index !== -1) multPool.splice(index, 1);
+                    // Mastery speed: a full floor, and the fact counts as cleared for this climb.
                     if (!wasCleared) multCleared.push(question.factor);
-                    const gained = awardClimb(question.factor, 1);
-                    renderFactTracker();
-                    updateClimber(gained > 0 ? 'full' : null);
+                    noteFactCredit(question.factor, 1);
+                    climbFloor(1, 'full');
 
                     if (wasCleared) {
                         climbToast('⚡ ' + label + ' again!');
                         $('achievement-display').innerHTML =
                             '<span class="achievement-indicator achievement-mastery">⚡ Still lightning fast on ' +
-                            label + '</span>';
+                            label + ' — another full floor</span>';
                     } else {
                         climbToast('▲ ' + label + ' cleared!');
                         $('achievement-display').innerHTML =
@@ -3108,30 +3135,23 @@
                             MULT_FULL_SECONDS + 's — full floor, fact cleared!</span>';
                     }
 
-                    if (multCleared.length >= FACTS_PER_MODULE && !multTowerCelebrated) {
-                        multTowerCelebrated = true;
-                        celebrate();
-                        climbToast('🏆 TOP FLOOR!');
-                        $('climb-caption').textContent = 'Tower complete! Keep going — every question still counts.';
-                        delay = 2400;
+                    if (multCleared.length >= FACTS_PER_MODULE && !multFactsCelebrated) {
+                        multFactsCelebrated = true;
+                        climbToast('🎯 ALL ' + FACTS_PER_MODULE + ' FACTS!');
+                        $('climb-caption').textContent =
+                            'Every fact cleared! Keep climbing — each question is another floor.';
+                        delay = 1800;
                     }
                 } else if (timeTaken <= MULT_HALF_SECONDS) {
-                    // Half speed: half a floor, but the fact stays in the pool until it is mastered.
-                    const gained = awardClimb(question.factor, 0.5);
-                    renderFactTracker();
-                    updateClimber(gained > 0 ? 'half' : null);
+                    // Half speed: this question is worth half a floor.
+                    noteFactCredit(question.factor, 0.5);
+                    climbFloor(0.5, 'half');
 
-                    if (gained > 0) {
-                        climbToast('△ half a floor');
-                        $('achievement-display').innerHTML =
-                            '<span class="achievement-indicator achievement-accomplished">🕸️ Under ' +
-                            MULT_HALF_SECONDS + 's — half a floor. Under ' + MULT_FULL_SECONDS +
-                            's clears it!</span>';
-                    } else {
-                        $('achievement-display').innerHTML =
-                            '<span class="achievement-indicator achievement-accomplished">🕸️ Correct — get ' +
-                            label + ' under ' + MULT_FULL_SECONDS + 's to clear it.</span>';
-                    }
+                    climbToast('△ half a floor');
+                    $('achievement-display').innerHTML =
+                        '<span class="achievement-indicator achievement-accomplished">🕸️ Under ' +
+                        MULT_HALF_SECONDS + 's — half a floor. Under ' + MULT_FULL_SECONDS +
+                        's climbs a whole one!</span>';
                     $('climb-caption').textContent = 'Half speed! Under ' + MULT_FULL_SECONDS +
                         's climbs a full floor.';
                 } else {
@@ -3140,6 +3160,15 @@
                         MULT_HALF_SECONDS + 's — no climb this time</span>';
                     $('climb-caption').textContent = 'Correct! Answer under ' + MULT_HALF_SECONDS +
                         's to start climbing.';
+                }
+
+                if (climbFloors() >= MULT_FLOORS_PER_RUN && !multTowerCelebrated) {
+                    multTowerCelebrated = true;
+                    celebrate();
+                    climbToast('🏆 TOP FLOOR!');
+                    $('climb-caption').textContent = 'All ' + MULT_FLOORS_PER_RUN +
+                        ' floors — you reached the roof!';
+                    delay = 2400;
                 }
             } else {
                 const timings = getTimingThresholds(runKey);
@@ -3333,7 +3362,7 @@
             const accuracy = answers.length ? (correctCount / answers.length) * 100 : 0;
             const clearedThisRun = multCleared.length;
             const floorsThisRun = climbFloors();
-            const towerComplete = floorsThisRun >= FACTS_PER_MODULE;
+            const towerComplete = floorsThisRun >= MULT_FLOORS_PER_RUN;
 
             const facts = Object.assign({}, mod.masteredFacts || {});
             answers.forEach(function (a) {
@@ -3353,7 +3382,16 @@
 
             mod.masteredFacts = facts;
             mod.bestCleared = Math.max(mod.bestCleared || 0, clearedThisRun);
-            mod.bestFloors = Math.max(mod.bestFloors || 0, floorsThisRun);
+            // Compare as a fraction of the tower so a best set on the old 12-floor tower still
+            // means something next to a climb scored out of 20.
+            const priorFloors = mod.bestFloors || 0;
+            const priorOutOf = mod.bestFloorsOutOf || FACTS_PER_MODULE;
+            if (!priorFloors || floorsThisRun / MULT_FLOORS_PER_RUN >= priorFloors / priorOutOf) {
+                mod.bestFloors = floorsThisRun;
+                mod.bestFloorsOutOf = MULT_FLOORS_PER_RUN;
+            } else {
+                mod.bestFloorsOutOf = priorOutOf;
+            }
             if (mastery && (TIER_ORDER[mastery] || 0) > (TIER_ORDER[mod.mastery] || 0)) {
                 mod.mastery = mastery;
             }
@@ -3366,6 +3404,7 @@
                 totalQuestions: answers.length,
                 factsCleared: clearedThisRun,
                 floorsClimbed: floorsThisRun,
+                floorsPossible: MULT_FLOORS_PER_RUN,
                 towerComplete: towerComplete,
                 avgTime: avgTime,
                 accuracy: accuracy,
@@ -3383,6 +3422,7 @@
                 updates['mult/' + key + '/masteredFacts'] = facts;
                 updates['mult/' + key + '/bestCleared'] = mod.bestCleared;
                 updates['mult/' + key + '/bestFloors'] = mod.bestFloors;
+                updates['mult/' + key + '/bestFloorsOutOf'] = mod.bestFloorsOutOf;
                 updates['mult/' + key + '/mastery'] = mod.mastery;
                 await studentRef().update(updates);
                 await studentRef('mult/' + key + '/attempts').push(attempt);
@@ -3397,7 +3437,7 @@
                 : '🕸️ ×' + table + ' Climb Finished';
 
             $('results-stats').innerHTML =
-                statCard(formatFloors(floorsThisRun) + '/' + FACTS_PER_MODULE, 'Floors Climbed') +
+                statCard(formatFloors(floorsThisRun) + '/' + MULT_FLOORS_PER_RUN, 'Floors Climbed') +
                 statCard(clearedThisRun + '/' + FACTS_PER_MODULE, 'Facts Cleared') +
                 statCard(correctCount + '/' + answers.length, 'Correct') +
                 statCard(avgTime.toFixed(1) + 's', 'Avg Time') +
@@ -3409,11 +3449,12 @@
                 html += '<div class="mastery-badge mastery-' + mastery.toLowerCase() + '">×' + table + ' ' + mastery + '</div>';
             }
             if (towerComplete) {
-                html += '<p style="color:#28a745; font-weight:bold;">You cleared all ' + FACTS_PER_MODULE +
-                        ' facts in one climb and reached the roof! 🚩</p>';
+                html += '<p style="color:#28a745; font-weight:bold;">All ' + MULT_QUESTIONS_PER_RUN +
+                        ' questions under ' + MULT_FULL_SECONDS + 's — you climbed every one of the ' +
+                        MULT_FLOORS_PER_RUN + ' floors and reached the roof! 🚩</p>';
             } else {
                 html += '<p style="color:#666;">You climbed ' + formatFloors(floorsThisRun) + ' of ' +
-                        FACTS_PER_MODULE + ' floors and cleared ' + clearedThisRun + ' fact' +
+                        MULT_FLOORS_PER_RUN + ' floors and cleared ' + clearedThisRun + ' fact' +
                         (clearedThisRun === 1 ? '' : 's') + '. Under ' + MULT_FULL_SECONDS +
                         's climbs a full floor, under ' + MULT_HALF_SECONDS + 's climbs half a floor.</p>';
             }
@@ -3799,16 +3840,18 @@
                     '<p style="color:#666; font-size:14px;">' +
                         fast + '/' + FACTS_PER_MODULE + ' facts under ' + MULT_HALF_SECONDS + 's · ' +
                         top + '/' + FACTS_PER_MODULE + ' at MASTERY speed (under ' + MULT_FULL_SECONDS + 's) · ' +
-                        'best climb ' + formatFloors(mod.bestFloors || mod.bestCleared || 0) + '/' +
-                        FACTS_PER_MODULE + ' floors, ' + (mod.bestCleared || 0) + ' facts cleared · ' +
+                        'best climb ' + formatFloors(mod.bestFloors || 0) + '/' +
+                        (mod.bestFloorsOutOf || FACTS_PER_MODULE) + ' floors, ' +
+                        (mod.bestCleared || 0) + ' facts cleared · ' +
                         attempts.length + ' climb' + (attempts.length === 1 ? '' : 's') + '</p>';
 
                 if (attempts.length) {
                     html += '<div class="attempt-history" style="margin-top:12px;">' +
                         attempts.slice().reverse().map(function (a) {
                             const floors = a.floorsClimbed === undefined ? (a.factsCleared || 0) : a.floorsClimbed;
+                            const outOf = a.floorsPossible || FACTS_PER_MODULE;
                             return renderAttempt(a, '🧗 Climbed <strong>' + formatFloors(floors) + '/' +
-                                FACTS_PER_MODULE + ' floors</strong> · ' + (a.factsCleared || 0) +
+                                outOf + ' floors</strong> · ' + (a.factsCleared || 0) +
                                 '/' + FACTS_PER_MODULE + ' facts cleared' +
                                 (a.towerComplete ? ' — reached the roof 🚩' : ''));
                         }).join('') +

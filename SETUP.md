@@ -58,26 +58,43 @@ teachers/{uid}            name, firstName, lastName, email, code, classGrade, cr
 classCodes/{CODE}         teacherUid, teacherName, grade
 students/{pushId}         name, avatar, teacherUid, teacherCode, grade, createdAt, pinHash
   levels/{A..E}           unlocked, mastery, masteredQuestions{key:tier}, attempts{}
-  mult/{t2..t10}          mastery, masteredFacts{f1..f12:tier}, bestCleared, bestFloors, attempts{}
+  mult/{t2..t10}          mastery, masteredFacts{f1..f12:tier}, bestCleared, bestFloors,
+                          bestFloorsOutOf, attempts{}
 ```
 
 `bestCleared` is the most facts cleared in a single climb; `bestFloors` is the highest the climber
-reached in a single climb (it can be a half number). Records written before `bestFloors` existed
-still load — it defaults to 0 and fills in on the next climb.
+reached in a single climb (it can be a half number), and `bestFloorsOutOf` says how tall the tower
+was when that best was set. Records written before `bestFloors` existed still load — it defaults to
+0 and fills in on the next climb. Records written when the tower was 12 floors tall have no
+`bestFloorsOutOf`; those default to 12, so an old best still reads as `12/12` rather than being
+silently rescored against the taller tower. A new climb takes over the record when it is at least as
+good *as a fraction of its own tower*.
 
 ## 3b. Sky Climber rules
 
-Every climb is **exactly 20 questions**, no matter how fast or accurate the student is.
+Every climb is **exactly 20 questions on a 20-floor tower** — one floor per question, so a flawless
+climb reaches the roof.
+
+**The question set.** The first 12 questions are the whole table (`×1` to `×12`) in random order.
+The last 8 are repeats, chosen from that opening pass:
+
+* every fact the student got **wrong** comes back first, slowest miss first;
+* the remaining slots are filled with the **slowest** correct answers, slowest first;
+* so if nothing was missed, the 8 repeats are simply the 8 slowest facts.
+
+The same fact is never asked twice in a row.
+
+**The climb.** Each question is scored on its own:
 
 | Answer | Climb | Fact |
 | --- | --- | --- |
-| Correct in under 3s (mastery speed) | full floor | cleared for the rest of the run |
-| Correct in under 6s | half a floor | stays in the pool and comes back around |
-| Correct but slower, or wrong | no climb | stays in the pool |
+| Correct in under 3s (mastery speed) | full floor | counts as cleared for this run |
+| Correct in under 6s | half a floor | not cleared |
+| Correct but slower, or wrong | no climb | not cleared |
 
-Each fact is worth at most one floor per climb, so re-answering a fact cannot inflate the tower.
-Once all 12 facts are cleared the run keeps going, recycling cleared facts until 20 questions are
-done — those extra reps still count toward the per-fact tier records.
+A repeat of an already-cleared fact still earns its floor, because the floor belongs to the question
+rather than to the fact. `Facts Cleared` is still out of 12 and is what module mastery is based on;
+`Floors Climbed` is out of 20 and is the score for the run.
 
 The full question set for each level is now generated in the browser instead of being stored on
 every student record, which makes student records much smaller.
