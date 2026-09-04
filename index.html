@@ -510,6 +510,14 @@
         .num-btn.clear-btn { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); font-size: clamp(12px, 2vh, 18px); }
         .num-btn.backspace-btn { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #333; font-size: clamp(15px, 2.4vh, 22px); }
         .num-btn.zero-btn { grid-column: 2; }
+        .num-btn.enter-btn {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            font-size: clamp(13px, 2.1vh, 19px);
+            min-height: clamp(34px, 5vh, 56px);
+        }
+        .num-btn.enter-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+        .input-method-hint.hint-ready { color: #1e7e34; font-weight: bold; }
 
         .input-method-hint { font-size: clamp(10px, 1.7vh, 12px); color: #888; margin: 0; }
 
@@ -1255,6 +1263,7 @@
                         <li><strong>Find your name</strong> on the class list and tap it.</li>
                         <li><strong>Type your 4-number PIN.</strong> The first time you log in you get to make one up — keep it secret, and ask your teacher if you ever forget it.</li>
                         <li><strong>Pick your avatar</strong> the first time — you can change it any time from the menu.</li>
+                        <li><strong>Answering:</strong> type or tap your answer. It is usually checked as soon as you finish it — if nothing happens, tap the green <strong>✓ Answer</strong> button (or press Enter) to send what you have.</li>
                         <li><strong>Math Facts Levels:</strong> answer quickly and correctly to master every fact and unlock the next level.</li>
                         <li><strong>Sky Climber (×2 to ×10):</strong> every climb is 20 questions on a 20-floor tower. Answer in under <strong>3 seconds</strong> to climb a full floor, or under <strong>6 seconds</strong> for half a floor. The first 12 questions are the whole table; the last 8 bring back the facts you missed, or your slowest ones.</li>
                     </ul>
@@ -1532,8 +1541,9 @@
                     <div id="run-status-display"></div>
                     <div class="timer timer-hidden" id="timer">Time: 0.0s</div>
                     <div class="question-text" id="question-text">5 + 3 = ?</div>
-                    <input type="number" class="answer-input" id="answer-input" oninput="checkAnswer()" inputmode="none">
-                    <div class="input-method-hint">Type or tap the numbers</div>
+                    <input type="number" class="answer-input" id="answer-input" oninput="checkAnswer()" inputmode="none"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();submitAnswer();}">
+                    <div class="input-method-hint" id="input-hint">Type or tap the numbers</div>
                     <div class="feedback-line" id="feedback"></div>
                     <div id="answer-time" class="answer-time-display"></div>
                     <div class="achievement-line" id="achievement-display"></div>
@@ -1553,6 +1563,7 @@
                         <button class="num-btn clear-btn" onclick="numPadClear()">Clear</button>
                         <button class="num-btn zero-btn" onclick="numPadInput('0')">0</button>
                         <button class="num-btn backspace-btn" onclick="numPadBackspace()">⌫</button>
+                        <button class="num-btn enter-btn" id="submit-btn" onclick="submitAnswer()" disabled>✓ Answer</button>
                     </div>
                     <button class="btn btn-secondary" onclick="endSession()">End Session</button>
                 </div>
@@ -1670,6 +1681,13 @@
 
         const TIER_ORDER = { BASIC: 1, ACCOMPLISHED: 2, MASTERY: 3 };
 
+        // How long an ungraded answer may sit in the box before it is graded anyway.
+        const IDLE_GRADE_MS = 12000;
+
+        // A Firebase write stays pending forever while the device is offline - it never rejects -
+        // so a save that goes quiet for this long is reported instead of waited on.
+        const SAVE_TIMEOUT_MS = 12000;
+
         const AVATARS = [
             '🦸', '🦸‍♀️', '🕷️', '🐝', '🦊', '🐼', '🐨', '🦁', '🐯', '🐸',
             '🐧', '🦄', '🐙', '🦖', '🦋', '🐬', '🦉', '🐢', '🚀', '⚡',
@@ -1695,6 +1713,7 @@
         let startTime = null;
         let timerInterval = null;
         let advanceTimer = null;
+        let idleGradeTimer = null;
         let countdownInterval = null;
         let isProcessingAnswer = false;
         let authReady = false;
@@ -1702,6 +1721,7 @@
         let authTransition = false;   // true while we deliberately swap between anonymous/teacher sign-in
         let pendingAvatar = null;
         let avatarIsChange = false;
+        let pendingSave = null;       // the last round's save, kept so the student can retry it
 
         // --- student PIN gate ---
         let pinStudent = null;           // record waiting behind the PIN screen
@@ -1753,6 +1773,31 @@
             const el = $(id);
             if (!el) return;
             el.innerHTML = text ? '<div class="' + type + '-message">' + text + '</div>' : '';
+        }
+
+        // Results are shown first and saved afterwards: a round the student has finished should
+        // never be trapped behind the network. The write is raced against a timeout so an offline
+        // device gets told, and the same save can be retried from the results screen.
+        function saveRound(save) {
+            pendingSave = save;
+            setMessage('results-banner', 'info', 'Saving…');
+            const timeout = new Promise(function (resolve, reject) {
+                setTimeout(function () { reject(new Error('save timed out')); }, SAVE_TIMEOUT_MS);
+            });
+            return Promise.race([save(), timeout]).then(function () {
+                pendingSave = null;
+                setMessage('results-banner', 'success', 'Saved ✓');
+            }, function (error) {
+                console.error('Could not save results:', error);
+                setMessage('results-banner', 'error',
+                    'We could not save this round — check the connection. ' +
+                    'Your earlier progress is safe. ' +
+                    '<button class="btn btn-small" onclick="retrySave()">Try again</button>');
+            });
+        }
+
+        function retrySave() {
+            if (pendingSave) saveRound(pendingSave);
         }
 
         function gradeToNumber(grade) {
@@ -2688,9 +2733,26 @@
         function numPadInput(digit) {
             if (isProcessingAnswer) return;
             const input = $('answer-input');
+            // A lone 0 is a real answer, but a run of them never is - and a box filled with
+            // leading zeros is shorter than the answer it is checked against, so it can never
+            // be graded. Refusing the second one keeps that state out of reach.
+            if (digit === '0' && input.value === '0') return;
             if (input.value.length >= 4) return;
             input.value += digit;
             checkAnswer();
+        }
+
+        // Nothing can reliably tell when a typed answer is finished, so the student always gets
+        // an explicit way to commit one. This keeps that button and its prompt in step with the box.
+        function refreshSubmitState() {
+            const ready = !isProcessingAnswer && startTime !== null && $('answer-input').value !== '';
+            const btn = $('submit-btn');
+            if (btn) btn.disabled = !ready;
+            const hint = $('input-hint');
+            if (hint) {
+                hint.textContent = ready ? 'Tap \u2713 Answer when you are done' : 'Type or tap the numbers';
+                hint.classList.toggle('hint-ready', ready);
+            }
         }
 
         function clearFeedback() {
@@ -2779,6 +2841,8 @@
             timerInterval = null;
             clearTimeout(advanceTimer);
             advanceTimer = null;
+            clearTimeout(idleGradeTimer);
+            idleGradeTimer = null;
             startTime = null;
         }
 
@@ -3064,6 +3128,7 @@
             $('timer').classList.add('timer-hidden');
 
             startTime = Date.now();
+            refreshSubmitState();
             if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(function () {
                 const elapsed = (Date.now() - startTime) / 1000;
@@ -3081,28 +3146,61 @@
             if (isProcessingAnswer || startTime === null) return;
 
             const raw = $('answer-input').value;
-            if (raw === '') { clearFeedback(); return; }
+            if (raw === '') { clearFeedback(); refreshSubmitState(); armIdleGrade(); return; }
 
             const question = currentQuestionObject();
             if (!question) return;
 
             const userAnswer = parseInt(raw, 10);
-            if (isNaN(userAnswer)) return;
+            if (isNaN(userAnswer)) { refreshSubmitState(); armIdleGrade(); return; }
 
             if (userAnswer === question.answer) {
                 handleCorrect(question, userAnswer);
                 return;
             }
 
-            // Only judge a wrong answer once the student has typed enough digits.
+            // A wrong answer is graded on sight only once it is as long as the right one, because
+            // anything shorter might still be half typed. A short one waits for the Answer button
+            // instead of leaving the question ungraded forever.
             if (raw.replace(/^0+(?=\d)/, '').length >= String(question.answer).length) {
                 handleIncorrect(question, userAnswer);
+                return;
             }
+
+            refreshSubmitState();
+            armIdleGrade();
+        }
+
+        // Grades whatever is in the box right now. Reached from the Answer button and the Enter
+        // key, so a short answer can never leave a run with no way forward.
+        function submitAnswer() {
+            if (isProcessingAnswer || startTime === null) return;
+            const question = currentQuestionObject();
+            if (!question) return;
+            const userAnswer = parseInt($('answer-input').value, 10);
+            if (isNaN(userAnswer)) return;
+            if (userAnswer === question.answer) handleCorrect(question, userAnswer);
+            else handleIncorrect(question, userAnswer);
+        }
+
+        // Backstop for a student who never presses Answer: an answer left sitting in the box is
+        // graded on its own. The wait is far past every speed tier, so it costs no credit.
+        function armIdleGrade() {
+            clearTimeout(idleGradeTimer);
+            idleGradeTimer = null;
+            if (isProcessingAnswer || startTime === null || $('answer-input').value === '') return;
+            idleGradeTimer = setTimeout(function () {
+                idleGradeTimer = null;
+                submitAnswer();
+            }, IDLE_GRADE_MS);
         }
 
         function handleCorrect(question, userAnswer) {
             isProcessingAnswer = true;
             clearInterval(timerInterval);
+            clearTimeout(idleGradeTimer);
+            idleGradeTimer = null;
+            refreshSubmitState();
             const timeTaken = (Date.now() - startTime) / 1000;
 
             $('feedback').textContent = '✓ Correct!';
@@ -3191,6 +3289,9 @@
         function handleIncorrect(question, userAnswer) {
             isProcessingAnswer = true;
             clearInterval(timerInterval);
+            clearTimeout(idleGradeTimer);
+            idleGradeTimer = null;
+            refreshSubmitState();
             const timeTaken = (Date.now() - startTime) / 1000;
 
             $('feedback').innerHTML = '✗ Incorrect. The answer is <strong>' + question.answer + '</strong>';
@@ -3314,20 +3415,6 @@
                 }
             }
 
-            try {
-                const updates = {};
-                updates['levels/' + levelKey + '/masteredQuestions'] = mastered;
-                updates['levels/' + levelKey + '/mastery'] = student.levels[levelKey].mastery;
-                if (unlockedNext) {
-                    updates['levels/' + LEVEL_KEYS[LEVEL_KEYS.indexOf(levelKey) + 1] + '/unlocked'] = true;
-                }
-                await studentRef().update(updates);
-                await studentRef('levels/' + levelKey + '/attempts').push(attempt);
-            } catch (error) {
-                console.error('Could not save results:', error);
-                setMessage('results-banner', 'error', 'We could not save this round. Check your connection — your earlier progress is safe.');
-            }
-
             $('results-title').textContent = '🎉 ' + levels[levelKey].name + ' Complete!';
             $('results-stats').innerHTML =
                 statCard(correctCount, 'Correct') +
@@ -3349,6 +3436,18 @@
 
             $('results-back-btn').textContent = 'Back to Levels';
             showScreen('results-screen');
+
+            await saveRound(function () {
+                const updates = {};
+                updates['levels/' + levelKey + '/masteredQuestions'] = mastered;
+                updates['levels/' + levelKey + '/mastery'] = student.levels[levelKey].mastery;
+                if (unlockedNext) {
+                    updates['levels/' + LEVEL_KEYS[LEVEL_KEYS.indexOf(levelKey) + 1] + '/unlocked'] = true;
+                }
+                return studentRef().update(updates).then(function () {
+                    return studentRef('levels/' + levelKey + '/attempts').push(attempt);
+                });
+            });
         }
 
         async function finishMultRun() {
@@ -3417,21 +3516,6 @@
                 })
             };
 
-            try {
-                const updates = {};
-                updates['mult/' + key + '/masteredFacts'] = facts;
-                updates['mult/' + key + '/bestCleared'] = mod.bestCleared;
-                updates['mult/' + key + '/bestFloors'] = mod.bestFloors;
-                updates['mult/' + key + '/bestFloorsOutOf'] = mod.bestFloorsOutOf;
-                updates['mult/' + key + '/mastery'] = mod.mastery;
-                await studentRef().update(updates);
-                await studentRef('mult/' + key + '/attempts').push(attempt);
-                setMessage('results-banner', '', '');
-            } catch (error) {
-                console.error('Could not save Sky Climber results:', error);
-                setMessage('results-banner', 'error', 'We could not save this climb. Check your connection — your earlier progress is safe.');
-            }
-
             $('results-title').textContent = towerComplete
                 ? '🏆 ×' + table + ' Tower Complete!'
                 : '🕸️ ×' + table + ' Climb Finished';
@@ -3466,6 +3550,18 @@
 
             $('results-back-btn').textContent = 'Back to Modules';
             showScreen('results-screen');
+
+            await saveRound(function () {
+                const updates = {};
+                updates['mult/' + key + '/masteredFacts'] = facts;
+                updates['mult/' + key + '/bestCleared'] = mod.bestCleared;
+                updates['mult/' + key + '/bestFloors'] = mod.bestFloors;
+                updates['mult/' + key + '/bestFloorsOutOf'] = mod.bestFloorsOutOf;
+                updates['mult/' + key + '/mastery'] = mod.mastery;
+                return studentRef().update(updates).then(function () {
+                    return studentRef('mult/' + key + '/attempts').push(attempt);
+                });
+            });
         }
 
         function backFromResults() {
@@ -3893,6 +3989,8 @@
             numPadClear: numPadClear,
             numPadBackspace: numPadBackspace,
             checkAnswer: checkAnswer,
+            submitAnswer: submitAnswer,
+            retrySave: retrySave,
             endSession: endSession,
             backFromResults: backFromResults,
             retryRun: retryRun,

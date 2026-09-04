@@ -99,6 +99,24 @@ rather than to the fact. `Facts Cleared` is still out of 12 and is what module m
 The full question set for each level is now generated in the browser instead of being stored on
 every student record, which makes student records much smaller.
 
+## 3c. How an answer gets graded
+
+This applies to both run modes. A correct answer is accepted the moment it is typed. A wrong one is
+only judged on sight once it is as long as the right answer, because anything shorter might still be
+half typed — so a student who types `5` for `7 × 3` has not answered yet. Three things make sure that
+can never strand a run:
+
+* the green **✓ Answer** button (and the Enter key) grades whatever is in the box, at any time;
+* an answer left untouched in the box for 12 seconds is graded on its own — well past every speed
+  tier, so it costs no credit that was not already lost;
+* the number pad refuses a second leading zero, so the box can never fill with zeros that are
+  shorter than the answer they are checked against.
+
+Results are rendered **before** the round is saved, and the save is raced against a 12-second
+timeout. A Firebase write stays pending forever on an offline device rather than failing, so waiting
+on it used to hide the results screen entirely; now the student always sees their score, and a save
+that does not land offers a **Try again** button on the results banner.
+
 ## 4. Migration
 
 Accounts under the old `users/` node are not read by the new app. Existing teachers need to create
