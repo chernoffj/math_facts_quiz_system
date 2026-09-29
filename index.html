@@ -286,9 +286,10 @@
         .avatar-option.selected { border-color: #667eea; background: #eef1fd; transform: scale(1.06); }
 
         /* ---------- Mode & level cards ---------- */
+        /* 220px keeps all three modes on one row on a laptop; narrower screens still wrap. */
         .mode-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 20px;
             margin: 20px 0;
         }
@@ -307,6 +308,7 @@
         .mode-card:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(0,0,0,0.22); }
         .mode-facts { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .mode-mult { background: linear-gradient(135deg, #c31432 0%, #240b36 100%); }
+        .mode-div { background: linear-gradient(135deg, #0f3057 0%, #00818a 60%, #00b7c2 100%); }
         .mode-card .mode-emoji { font-size: 50px; display: block; margin-bottom: 10px; }
         .mode-card h3 { font-size: 24px; margin-bottom: 8px; }
         .mode-card p { font-size: 14px; opacity: 0.9; }
@@ -370,6 +372,9 @@
             overflow: hidden;
         }
 
+        /* Each fact game tints its module cards so the two sets never look interchangeable. */
+        .module-card.module-climb { background: linear-gradient(150deg, #3a1c71 0%, #d76d77 60%, #ffaf7b 100%); }
+        .module-card.module-dive { background: linear-gradient(150deg, #04293a 0%, #064663 55%, #1b98a8 100%); }
         .module-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.25); }
         .module-card h3 { font-size: 30px; margin-bottom: 4px; }
         .module-card .module-sub { font-size: 12px; opacity: 0.9; }
@@ -389,6 +394,13 @@
         }
 
         .module-stat { font-size: 11px; opacity: 0.95; }
+
+        .mini-chip-label {
+            font-size: 14px;
+            padding: 3px 6px;
+            margin-right: 2px;
+            align-self: center;
+        }
 
         .module-badge {
             position: absolute;
@@ -439,9 +451,13 @@
             min-height: 0;
         }
 
-        /* The tower column only shows during a Sky Climber run. */
+        /* The scene column only shows during a fact game; body.mode-game marks those runs,
+           and the mode-climb / mode-dive class picks which of the two scenes is visible. */
         .quiz-col-scene { display: none; width: 100%; max-width: 320px; }
-        body.mode-climb .quiz-col-scene { display: flex; }
+        body.mode-game .quiz-col-scene { display: flex; }
+        .climb-scene, .dive-scene { display: none; }
+        body.mode-climb .climb-scene { display: block; }
+        body.mode-dive .dive-scene { display: block; }
 
         .quiz-col-question {
             width: 100%;
@@ -988,7 +1004,7 @@
             60% { transform: translateX(5px) rotate(11deg); }
         }
 
-        .climb-hud {
+        .scene-hud {
             position: absolute;
             top: 10px;
             left: 12px;
@@ -1002,18 +1018,21 @@
             backdrop-filter: blur(2px);
         }
 
-        .climb-caption {
+        .scene-caption {
             position: absolute;
-            bottom: 4px;
+            bottom: 0;
             left: 0;
             right: 0;
+            padding: 8px 6px 5px;
             text-align: center;
-            color: #cfd6ff;
+            color: #eef1ff;
             font-size: 12px;
             letter-spacing: 0.3px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+            background: linear-gradient(180deg, rgba(4, 8, 24, 0) 0%, rgba(4, 8, 24, 0.78) 65%);
         }
 
-        .confetti-layer {
+        .burst-layer {
             position: absolute;
             inset: 0;
             pointer-events: none;
@@ -1029,10 +1048,10 @@
 
         @keyframes confettiFall {
             0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(var(--fall, 310px)) rotate(540deg); opacity: 0.2; }
+            100% { transform: translateY(var(--travel, 310px)) rotate(540deg); opacity: 0.2; }
         }
 
-        .climb-toast {
+        .scene-toast {
             position: absolute;
             left: 50%;
             top: 46%;
@@ -1040,17 +1059,256 @@
             font-size: 26px;
             font-weight: bold;
             color: #ffd166;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.7);
+            /* The toast crosses whatever the scene is showing, including its own lit markers,
+               so it carries a dark outline rather than trusting the backdrop. */
+            text-shadow:
+                0 0 3px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,0.95),
+                0 2px 10px rgba(0,0,0,0.85);
             pointer-events: none;
             opacity: 0;
         }
 
-        .climb-toast.show { animation: toastPop 1.1s ease forwards; }
+        .scene-toast.show { animation: toastPop 1.1s ease forwards; }
 
         @keyframes toastPop {
             0%   { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
             30%  { opacity: 1; transform: translate(-50%, -55%) scale(1.15); }
             100% { opacity: 0; transform: translate(-50%, -95%) scale(1); }
+        }
+
+        /* ================= SEA DIVER (division mode) =================
+           Deliberately the mirror of the tower above: the same 20-step ladder of markers and
+           the same --unit fraction, but the scene reads downward, so step 0 is at the surface
+           and the diver's offset is measured from the top instead of the bottom. */
+        .dive-scene {
+            --d: 0;
+            position: relative;
+            height: 260px;
+            min-height: 150px;
+            flex: 1 1 auto;
+            border-radius: 16px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #7fdbf5 0%, #2aa3d4 14%, #0f74ad 38%, #094f7e 64%, #04243c 88%, #01121f 100%);
+            margin: 10px 0 18px;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+        }
+
+        /* Sunlight breaking through the surface, fading out with depth. */
+        .dive-shafts {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(100deg, transparent 0 14%, rgba(255,255,255,0.20) 14% 19%, transparent 19% 34%,
+                rgba(255,255,255,0.13) 34% 37%, transparent 37% 58%,
+                rgba(255,255,255,0.17) 58% 63%, transparent 63% 80%,
+                rgba(255,255,255,0.10) 80% 84%, transparent 84%);
+            mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+            -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 62%);
+            animation: shimmer 6s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.55; }
+        }
+
+        .dive-surface {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 12px;
+            background: linear-gradient(180deg, #d8f6ff, rgba(127, 219, 245, 0));
+            border-bottom: 2px solid rgba(255,255,255,0.55);
+        }
+
+        .dive-seabed {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 22px;
+            background: linear-gradient(180deg, #caa46a, #8a6b3c);
+            border-top: 2px solid #e2c48d;
+        }
+
+        .dive-reef {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 22px;
+            height: 52px;
+            background:
+                linear-gradient(90deg, transparent 0 5%, #053550 5% 13%, transparent 13% 20%,
+                #073f5e 20% 26%, transparent 26% 72%, #073f5e 72% 79%, transparent 79% 87%,
+                #053550 87% 96%, transparent 96%);
+            opacity: 0.85;
+        }
+
+        /* Slow drifting bubbles, so the water reads as water even before the diver moves. */
+        .dive-bubbles {
+            position: absolute;
+            inset: 0;
+            background-image:
+                radial-gradient(2px 2px at 14% 80%, rgba(255,255,255,0.75), transparent),
+                radial-gradient(1.5px 1.5px at 32% 62%, rgba(255,255,255,0.6), transparent),
+                radial-gradient(2px 2px at 70% 74%, rgba(255,255,255,0.7), transparent),
+                radial-gradient(1.5px 1.5px at 86% 55%, rgba(255,255,255,0.55), transparent),
+                radial-gradient(1.5px 1.5px at 54% 90%, rgba(255,255,255,0.6), transparent);
+            animation: drift 7s linear infinite;
+        }
+
+        @keyframes drift {
+            0%   { transform: translateY(0); opacity: 0.85; }
+            100% { transform: translateY(-46px); opacity: 0.25; }
+        }
+
+        .dive-trench {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 14px;
+            bottom: 22px;
+            width: 132px;
+            background: linear-gradient(180deg, #2f7fa6 0%, #1b5c85 45%, #103c5c 100%);
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 0 34px rgba(0,0,0,0.45);
+        }
+
+        .trench-marks {
+            position: absolute;
+            top: 4px;
+            bottom: 6px;
+            left: 8px;
+            right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        /* min-height stays 0 so 20 depths always fit, however short the scene gets. */
+        .depth-zone {
+            flex: 1 1 0;
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            align-items: stretch;
+            min-height: 0;
+        }
+
+        .depth-tick {
+            width: 24px;
+            background: #4f9dc2;
+            border-radius: 3px;
+            transition: background 0.35s, box-shadow 0.35s;
+        }
+
+        /* Gold is this app's colour for progress - the module meter and the cleared fact pills
+           already use it - so a reached depth lights the same way a climbed floor does. */
+        .depth-zone.lit .depth-tick {
+            background: #ffd166;
+            box-shadow: 0 0 12px rgba(255, 209, 102, 0.9);
+        }
+
+        /* A half-depth of credit lights one marker of the zone the diver is level with. */
+        .depth-zone.half-lit .depth-tick:first-child {
+            background: #c9a24a;
+            box-shadow: 0 0 8px rgba(255, 209, 102, 0.5);
+        }
+
+        .dive-treasure {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 26px;
+            z-index: 1;
+            font-size: 26px;
+            filter: grayscale(1) brightness(0.6);
+            transition: filter 0.4s, transform 0.4s;
+        }
+
+        .dive-treasure.reached {
+            filter: none;
+            transform: translateX(-50%) scale(1.25);
+            animation: treasureGlow 1s ease-in-out infinite;
+        }
+
+        @keyframes treasureGlow {
+            0%, 100% { transform: translateX(-50%) scale(1.2) rotate(-6deg); }
+            50% { transform: translateX(-50%) scale(1.3) rotate(6deg); }
+        }
+
+        /* Glints off the closed chest, so it reads as something worth reaching. */
+        .dive-treasure.reached { text-shadow: 0 0 14px rgba(255, 226, 138, 0.95); }
+
+        /* The air line pays out from the surface down to wherever the diver has reached. */
+        .dive-line {
+            position: absolute;
+            left: calc(50% + 70px);
+            width: 3px;
+            margin-left: -1.5px;
+            top: 10px;
+            bottom: calc(100% - 24px - var(--d) * (100% - 108px) - 26px);
+            background: linear-gradient(180deg, rgba(255,255,255,0.8), rgba(255,255,255,0.18));
+            border-radius: 2px;
+            transition: bottom 0.55s cubic-bezier(.34,1.3,.64,1);
+        }
+
+        .diver {
+            position: absolute;
+            left: calc(50% + 70px);
+            width: 46px;
+            height: 52px;
+            margin-left: -23px;
+            top: calc(24px + var(--d) * (100% - 108px));
+            transition: top 0.55s cubic-bezier(.34,1.3,.64,1);
+            filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45));
+        }
+
+        .diver svg { width: 100%; height: 100%; display: block; }
+
+        .diver-body { transform-origin: 50% 50%; animation: float 2.8s ease-in-out infinite; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(3px) rotate(3deg); }
+        }
+
+        .diver.kick .diver-body { animation: kickDown 0.6s ease; }
+
+        @keyframes kickDown {
+            0%   { transform: translateY(-6px) rotate(14deg) scale(0.9); }
+            45%  { transform: translateY(6px) rotate(-10deg) scale(1.12); }
+            100% { transform: translateY(0) rotate(0deg) scale(1); }
+        }
+
+        .diver.half-kick .diver-body { animation: kickHalf 0.6s ease; }
+
+        @keyframes kickHalf {
+            0%   { transform: translateY(-3px) rotate(7deg) scale(0.96); }
+            45%  { transform: translateY(3px) rotate(-5deg) scale(1.05); }
+            100% { transform: translateY(0) rotate(0deg) scale(1); }
+        }
+
+        .diver.tumble .diver-body { animation: tumbleShake 0.5s ease; }
+
+        @keyframes tumbleShake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-6px) rotate(12deg); }
+            60% { transform: translateX(5px) rotate(-10deg); }
+        }
+
+        /* The finishing burst: confetti falls for the tower, treasure floats up from the seabed. */
+        .bubble-burst {
+            position: absolute;
+            bottom: -24px;
+            font-size: 18px;
+            animation: bubbleRise linear forwards;
+        }
+
+        @keyframes bubbleRise {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(calc(-1 * var(--travel, 310px))) rotate(-420deg); opacity: 0.2; }
         }
 
         .fact-tracker {
@@ -1062,7 +1320,7 @@
             flex: 0 0 auto;
         }
 
-        body.mode-climb .fact-tracker { display: flex; }
+        body.mode-game .fact-tracker { display: flex; }
 
         .fact-pill {
             font-size: clamp(10px, 1.7vh, 12px);
@@ -1123,11 +1381,11 @@
 
             body.quiz-fit .progress-container { width: 100%; max-width: 760px; margin-inline: auto; }
 
-            /* No tower to share the screen with, so the card narrows and the keys grow. */
-            body.quiz-fit:not(.mode-climb) .container { max-width: 900px; }
-            body.quiz-fit:not(.mode-climb) .question-text { font-size: clamp(34px, 7vh, 56px); }
-            body.quiz-fit:not(.mode-climb) .number-pad { width: clamp(220px, 36vh, 320px); }
-            body.quiz-fit:not(.mode-climb) .num-btn { min-height: clamp(48px, 7.8vh, 80px); }
+            /* No scene to share the screen with, so the card narrows and the keys grow. */
+            body.quiz-fit:not(.mode-game) .container { max-width: 900px; }
+            body.quiz-fit:not(.mode-game) .question-text { font-size: clamp(34px, 7vh, 56px); }
+            body.quiz-fit:not(.mode-game) .number-pad { width: clamp(220px, 36vh, 320px); }
+            body.quiz-fit:not(.mode-game) .num-btn { min-height: clamp(48px, 7.8vh, 80px); }
 
             body.quiz-fit #question-screen.active {
                 display: flex;
@@ -1166,7 +1424,8 @@
                 font-size: clamp(13px, 2.1vh, 16px);
             }
 
-            body.quiz-fit .climb-scene { height: clamp(150px, 52vh, 420px); flex: 0 0 auto; margin: 0; }
+            body.quiz-fit .climb-scene,
+            body.quiz-fit .dive-scene { height: clamp(150px, 52vh, 420px); flex: 0 0 auto; margin: 0; }
         }
 
         /* Too narrow or too short for three columns: keep the stack, but let it try to
@@ -1207,8 +1466,9 @@
             }
 
             body.quiz-fit .quiz-col-scene { flex: 1 1 auto; min-height: 0; }
-            /* Twenty floors need real height to stay countable once the layout stacks. */
-            body.quiz-fit .climb-scene { height: auto; min-height: clamp(160px, 26vh, 260px); margin: 0; }
+            /* Twenty steps need real height to stay countable once the layout stacks. */
+            body.quiz-fit .climb-scene,
+            body.quiz-fit .dive-scene { height: auto; min-height: clamp(160px, 26vh, 260px); margin: 0; }
             body.quiz-fit .num-btn { min-height: clamp(36px, 5.6vh, 70px); }
             body.quiz-fit .quiz-col-pad .btn { padding: 8px 22px; font-size: 14px; margin: 0; }
         }
@@ -1219,11 +1479,12 @@
             .container { padding: 20px 16px; }
             h1 { font-size: 24px; }
             .countdown-number { font-size: 80px; }
-            .climb-scene { height: 230px; }
-            .climb-tower { width: 108px; }
-            .tower-floors { gap: 1px; }
-            .tower-window { width: 22px; }
+            .climb-scene, .dive-scene { height: 230px; }
+            .climb-tower, .dive-trench { width: 108px; }
+            .tower-floors, .trench-marks { gap: 1px; }
+            .tower-window, .depth-tick { width: 22px; }
             .climb-web, .climber { left: calc(50% + 58px); }
+            .dive-line, .diver { left: calc(50% + 58px); }
             .code-display { font-size: 26px; letter-spacing: 3px; }
             .code-input { font-size: 26px !important; letter-spacing: 4px; }
         }
@@ -1266,6 +1527,7 @@
                         <li><strong>Answering:</strong> type or tap your answer. It is usually checked as soon as you finish it — if nothing happens, tap the green <strong>✓ Answer</strong> button (or press Enter) to send what you have.</li>
                         <li><strong>Math Facts Levels:</strong> answer quickly and correctly to master every fact and unlock the next level.</li>
                         <li><strong>Sky Climber (×2 to ×10):</strong> every climb is 20 questions on a 20-floor tower. Answer in under <strong>3 seconds</strong> to climb a full floor, or under <strong>6 seconds</strong> for half a floor. The first 12 questions are the whole table; the last 8 bring back the facts you missed, or your slowest ones.</li>
+                        <li><strong>Sea Diver (÷2 to ÷10):</strong> the same game for division — 20 questions down a 20-depth trench. Under <strong>3 seconds</strong> dives a full depth, under <strong>6 seconds</strong> half a depth. Reach the bottom to open the treasure chest.</li>
                     </ul>
                 </div>
             </div>
@@ -1279,7 +1541,7 @@
                         <li><strong>Add each student by name</strong> in your dashboard. They log in with the class code — no student emails or passwords required.</li>
                         <li><strong>Each student picks a 4-digit PIN</strong> the first time they log in, so nobody can tap someone else's name. Use <em>Reset PIN</em> on their card when a student forgets theirs — they choose a new one at their next login.</li>
                         <li><strong>Move a student to another teacher</strong> with that teacher's class code, or remove a student from your roster.</li>
-                        <li><strong>Track progress</strong> for both Math Facts Levels and the ×2–×10 Sky Climber modules, and reset levels when needed.</li>
+                        <li><strong>Track progress</strong> for Math Facts Levels, the ×2–×10 Sky Climber modules and the ÷2–÷10 Sea Diver modules, and reset any of them when needed.</li>
                     </ul>
                 </div>
             </div>
@@ -1444,10 +1706,15 @@
                     <h3>Math Facts Levels</h3>
                     <p>Levels A–E · add, subtract, multiply, divide</p>
                 </button>
-                <button class="mode-card mode-mult" onclick="showModuleSelect()">
+                <button class="mode-card mode-mult" onclick="showModuleSelect('mult')">
                     <span class="mode-emoji">🕸️</span>
                     <h3>Sky Climber</h3>
                     <p>×2 to ×10 · clear facts fast and climb the tower</p>
+                </button>
+                <button class="mode-card mode-div" onclick="showModuleSelect('div')">
+                    <span class="mode-emoji">🤿</span>
+                    <h3>Sea Diver</h3>
+                    <p>÷2 to ÷10 · clear facts fast and dive for treasure</p>
                 </button>
             </div>
         </div>
@@ -1469,13 +1736,9 @@
                 <span class="back-link" onclick="showModeSelect()">← Back</span>
                 <div class="who-am-i"><span class="who-avatar" id="module-avatar">🙂</span><span id="module-name"></span></div>
             </div>
-            <h2 style="margin-bottom:6px;">🕸️ Sky Climber</h2>
-            <p style="color:#666; margin-bottom:10px;">
-                Every climb is <strong>20 questions</strong> on a <strong>20-floor tower</strong>. Answer in under
-                <strong>3 seconds</strong> and the climber goes up a <strong>full floor</strong>; under
-                <strong>6 seconds</strong> and it goes up <strong>half a floor</strong>. The first 12 questions cover the
-                whole table, then the 8 you missed — or answered slowest — come back around. Nail all 20 to reach the roof!
-            </p>
+            <!-- Title and blurb are written by showModuleSelect() for whichever game is open. -->
+            <h2 style="margin-bottom:6px;" id="module-screen-title">🕸️ Sky Climber</h2>
+            <p style="color:#666; margin-bottom:10px;" id="module-screen-blurb"></p>
             <div class="module-grid" id="module-grid"></div>
         </div>
 
@@ -1529,10 +1792,46 @@
                                 </g>
                             </svg>
                         </div>
-                        <div class="climb-hud" id="climb-hud">Floor 0 / 20 · 0 cleared</div>
-                        <div class="climb-caption" id="climb-caption">Under 3s = full floor · under 6s = half floor</div>
-                        <div class="climb-toast" id="climb-toast"></div>
-                        <div class="confetti-layer" id="confetti-layer"></div>
+                        <div class="scene-hud" id="climb-hud">Floor 0 / 20 · 0 cleared</div>
+                        <div class="scene-caption" id="climb-caption">Under 3s = full floor · under 6s = half floor</div>
+                        <div class="scene-toast" id="climb-toast"></div>
+                        <div class="burst-layer" id="confetti-layer"></div>
+                    </div>
+                    <!-- Sea Diver scene (division mode only) -->
+                    <div class="dive-scene" id="dive-scene">
+                        <div class="dive-shafts"></div>
+                        <div class="dive-surface"></div>
+                        <div class="dive-bubbles"></div>
+                        <div class="dive-seabed"></div>
+                        <div class="dive-reef"></div>
+                        <div class="dive-trench">
+                            <div class="trench-marks" id="trench-marks"></div>
+                        </div>
+                        <div class="dive-treasure" id="dive-treasure">🧰</div>
+                        <div class="dive-line" id="dive-line"></div>
+                        <div class="diver" id="diver">
+                            <svg viewBox="0 0 46 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <g class="diver-body">
+                                    <rect x="28" y="15" width="9" height="17" rx="4" fill="#e6edf5"/>
+                                    <path d="M31 15 C 31 10, 27 8, 25 9" stroke="#b6c3d4" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+                                    <path d="M15 24 C 8 23, 5 26, 4 30" stroke="#ff8a3d" stroke-width="5" fill="none" stroke-linecap="round"/>
+                                    <path d="M31 24 C 37 25, 39 28, 40 32" stroke="#ff8a3d" stroke-width="5" fill="none" stroke-linecap="round"/>
+                                    <path d="M19 36 C 17 42, 16 46, 18 50" stroke="#0e2f4a" stroke-width="6" fill="none" stroke-linecap="round"/>
+                                    <path d="M27 36 C 29 42, 30 46, 28 50" stroke="#0e2f4a" stroke-width="6" fill="none" stroke-linecap="round"/>
+                                    <path class="diver-fin" d="M11 49 L24 47 L17 54 Z" fill="#ffd166"/>
+                                    <path class="diver-fin" d="M35 49 L22 47 L29 54 Z" fill="#ffd166"/>
+                                    <path d="M23 18 C 30 18, 32 25, 31 31 C 30 36, 26 38, 23 38 C 20 38, 16 36, 15 31 C 14 25, 16 18, 23 18 Z" fill="#ff8a3d"/>
+                                    <path d="M23 26 C 27 26, 30 29, 31 31 C 30 36, 26 38, 23 38 C 20 38, 16 36, 15 31 C 16 29, 19 26, 23 26 Z" fill="#0e2f4a"/>
+                                    <ellipse cx="23" cy="12" rx="10" ry="9" fill="#ff8a3d"/>
+                                    <ellipse cx="23" cy="12" rx="7" ry="6" fill="#bdeeff" stroke="#0e2f4a" stroke-width="1.4"/>
+                                    <ellipse cx="20" cy="10.5" rx="2.2" ry="1.6" fill="#ffffff" opacity="0.9"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="scene-hud" id="dive-hud">Depth 0 / 20 · 0 cleared</div>
+                        <div class="scene-caption" id="dive-caption">Under 3s = full depth · under 6s = half depth</div>
+                        <div class="scene-toast" id="dive-toast"></div>
+                        <div class="burst-layer" id="bubble-burst-layer"></div>
                     </div>
                     <div class="fact-tracker" id="fact-tracker"></div>
                 </div>
@@ -1666,18 +1965,108 @@
         };
         const LEVEL_KEYS = Object.keys(levels);
 
-        // Sky Climber multiplication modules: x2 .. x10
+        // The two fact games - Sky Climber (x2..x10) and Sea Diver (division by 2..10) - are the
+        // same game with a different scene: 12 facts per module, 20 questions, 20 units of
+        // progress, the same speed tiers. Everything they disagree about lives in GAMES below.
         const MODULE_TABLES = [2, 3, 4, 5, 6, 7, 8, 9, 10];
-        const FACTS_PER_MODULE = 12;          // N x 1 .. N x 12
-        const MULT_QUESTIONS_PER_RUN = 20;    // every climb runs all 20 questions, no early exit
+        const FACTS_PER_MODULE = 12;          // N x 1 .. N x 12, or (N x 1)/N .. (N x 12)/N
+        const RUN_QUESTIONS = 20;             // every run is all 20 questions, no early exit
         // The 20 questions are one pass over the whole table, then 8 targeted repeats.
-        const MULT_BASE_QUESTIONS = FACTS_PER_MODULE;
-        const MULT_REPEAT_QUESTIONS = MULT_QUESTIONS_PER_RUN - MULT_BASE_QUESTIONS;
-        // Every question is worth its own floor, so a flawless climb tops out a 20-storey tower.
-        const MULT_FLOORS_PER_RUN = MULT_QUESTIONS_PER_RUN;
-        const MULT_FULL_SECONDS = 3;          // mastery speed: full-floor climb, and the fact counts as cleared
-        const MULT_HALF_SECONDS = 6;          // half-speed: half a floor, and the fact is not cleared
-        const MULT_TIMINGS = { MASTERY: 3, ACCOMPLISHED: 6, BASIC: 8 };
+        const RUN_BASE_QUESTIONS = FACTS_PER_MODULE;
+        const RUN_REPEAT_QUESTIONS = RUN_QUESTIONS - RUN_BASE_QUESTIONS;
+        // Every question is worth one unit of progress, so a flawless run tops out all 20.
+        const RUN_UNITS = RUN_QUESTIONS;
+        const FULL_SECONDS = 3;          // mastery speed: a full unit, and the fact counts as cleared
+        const HALF_SECONDS = 6;          // half-speed: half a unit, and the fact is not cleared
+        const GAME_TIMINGS = { MASTERY: 3, ACCOMPLISHED: 6, BASIC: 8 };
+
+        /* Per-game wording, storage branch and scene. `store` is the child of the student record
+         * the game saves under, and `modPrefix` + the table number is the module key inside it
+         * ('t7' for x7, 'd7' for div 7). The progress-unit field names differ per game so a saved
+         * attempt reads honestly on its own - a dive never claims to have climbed floors. */
+        const GAMES = {
+            mult: {
+                kind: 'mult', name: 'Sky Climber', emoji: '🕸️',
+                range: '×2–×10',
+                store: 'mult', modPrefix: 't',
+                bodyClass: 'mode-climb', moduleCardClass: 'module-climb', sceneId: 'climb-scene',
+                hudId: 'climb-hud', captionId: 'climb-caption', toastId: 'climb-toast',
+                burstId: 'confetti-layer', burstClass: 'confetti',
+                burstPieces: ['🎉', '⭐', '✨', '🎊', '🏆', '💫'],
+                unitOne: 'floor', unitMany: 'floors', unitLabel: 'Floor',
+                statLabel: 'Floors Climbed', bestKey: 'bestFloors', bestOutOfKey: 'bestFloorsOutOf',
+                attemptUnitsKey: 'floorsClimbed', attemptOutOfKey: 'floorsPossible',
+                runNoun: 'climb', runNounPlural: 'climbs', runVerbPast: 'climbed',
+                verbFull: 'climbs a full floor', verbHalf: 'climbs half a floor',
+                gainFull: 'climb a full floor', gainHalf: 'half a floor',
+                noProgressWord: 'climb', startWord: 'climbing',
+                fullIcon: '▲', halfIcon: '△', missToast: '😬 Hold on!',
+                goalToast: '🏆 TOP FLOOR!',
+                goalCaption: 'All ' + RUN_UNITS + ' floors — you reached the roof!',
+                goalResult: 'you climbed every one of the ' + RUN_UNITS +
+                    ' floors and reached the roof! 🚩',
+                doneTitle: function (table) { return '🏆 ×' + table + ' Tower Complete!'; },
+                partialTitle: function (table) {
+                    return '🕸️ ×' + table + ' Climb Finished';
+                },
+                allFactsCaption: 'Every fact cleared! Keep climbing — each question is another floor.',
+                moduleLabel: function (table) { return '×' + table; },
+                moduleSub: function (table) { return table + ' × 1 … ' + table + ' × 12'; },
+                factLabel: function (table, factor) { return table + '×' + factor; },
+                // Multiplication is commutative, so the pair is shown in either order.
+                buildQuestion: function (table, factor) {
+                    const flipped = Math.random() < 0.5;
+                    return {
+                        table: table, factor: factor, answer: table * factor,
+                        display: flipped ? (factor + ' × ' + table) : (table + ' × ' + factor)
+                    };
+                },
+                setupScene: function () { setupClimbScene(); },
+                paintScene: function (units, mode) { paintClimbScene(units, mode); },
+                missScene: function () { playSceneAnimation('climber', 'slip', 520); }
+            },
+            div: {
+                kind: 'div', name: 'Sea Diver', emoji: '🤿',
+                range: '÷2–÷10',
+                store: 'div', modPrefix: 'd',
+                bodyClass: 'mode-dive', moduleCardClass: 'module-dive', sceneId: 'dive-scene',
+                hudId: 'dive-hud', captionId: 'dive-caption', toastId: 'dive-toast',
+                burstId: 'bubble-burst-layer', burstClass: 'bubble-burst',
+                burstPieces: ['💎', '🫧', '⭐', '🐚', '✨', '🏅'],
+                unitOne: 'depth', unitMany: 'depths', unitLabel: 'Depth',
+                statLabel: 'Depth Reached', bestKey: 'bestDepth', bestOutOfKey: 'bestDepthOutOf',
+                attemptUnitsKey: 'depthReached', attemptOutOfKey: 'depthPossible',
+                runNoun: 'dive', runNounPlural: 'dives', runVerbPast: 'dived',
+                verbFull: 'dives a full depth', verbHalf: 'dives half a depth',
+                gainFull: 'dive a full depth', gainHalf: 'half a depth',
+                noProgressWord: 'dive', startWord: 'diving',
+                fullIcon: '▼', halfIcon: '▽', missToast: '🫧 Catch your breath!',
+                goalToast: '💎 TREASURE!',
+                goalCaption: 'All ' + RUN_UNITS + ' depths — you reached the treasure!',
+                goalResult: 'you dived through every one of the ' + RUN_UNITS +
+                    ' depths and reached the treasure! 💎',
+                doneTitle: function (table) { return '💎 ÷' + table + ' Treasure Found!'; },
+                partialTitle: function (table) { return '🤿 ÷' + table + ' Dive Finished'; },
+                allFactsCaption: 'Every fact cleared! Keep diving — each question is another depth.',
+                moduleLabel: function (table) { return '÷' + table; },
+                moduleSub: function (table) {
+                    return table + ' ÷ ' + table + ' … ' + (table * 12) + ' ÷ ' + table;
+                },
+                factLabel: function (table, factor) { return (table * factor) + '÷' + table; },
+                // Division is not commutative: the divisor is always the module's number and the
+                // quotient 1..12 is the fact being practised, so the dividend is table x factor.
+                buildQuestion: function (table, factor) {
+                    return {
+                        table: table, factor: factor, answer: factor,
+                        display: (table * factor) + ' ÷ ' + table
+                    };
+                },
+                setupScene: function () { setupDiveScene(); },
+                paintScene: function (units, mode) { paintDiveScene(units, mode); },
+                missScene: function () { playSceneAnimation('diver', 'tumble', 520); }
+            }
+        };
+        const GAME_KINDS = Object.keys(GAMES);
 
         const TIER_ORDER = { BASIC: 1, ACCOMPLISHED: 2, MASTERY: 3 };
 
@@ -1732,16 +2121,17 @@
         let pinAttempts = 0;             // wrong tries this visit
         let pinBusy = false;
 
-        // multiplication run state
-        let multSequence = [];           // factors for this climb: 12 shuffled facts, then 8 repeats
-        let multCleared = [];            // factors answered under MULT_FULL_SECONDS at least once this run
-        let multCredit = {};             // factor -> best floor credit earned on it this run (0.5 or 1)
-        let multProgress = 0;            // total floors climbed this run (one floor per question, max)
-        let multLastFactor = null;       // avoid asking the same fact twice in a row
-        let multAsked = 0;
-        let multCurrent = null;          // { table, factor, answer, display }
-        let multTowerCelebrated = false; // confetti fires once per run, when the roof is reached
-        let multFactsCelebrated = false; // the "all 12 facts" toast fires once per run
+        // Fact-game run state - shared by Sky Climber and Sea Diver, which never run at once.
+        let moduleKind = 'mult';         // which game's module screen was last opened
+        let factSequence = [];           // factors for this run: 12 shuffled facts, then 8 repeats
+        let factCleared = [];            // factors answered under FULL_SECONDS at least once this run
+        let factCredit = {};             // factor -> best unit credit earned on it this run (0.5 or 1)
+        let runProgress = 0;             // units of progress this run (one per question, at most)
+        let lastFactor = null;           // avoid asking the same fact twice in a row
+        let factsAsked = 0;
+        let factCurrent = null;          // { table, factor, answer, display }
+        let goalCelebrated = false;      // the burst fires once per run, when the goal is reached
+        let allFactsCelebrated = false;  // the "all 12 facts" toast fires once per run
 
         /* =====================================================================
          * SMALL HELPERS
@@ -1888,7 +2278,11 @@
             return count;
         }
 
-        function moduleKey(table) { return 't' + table; }
+        // The game being run right now, or null during a Math Facts Levels round.
+        function gameCfg() { return GAMES[runKind] || null; }
+        function isGameRun() { return !!GAMES[runKind]; }
+
+        function moduleKey(game, table) { return game.modPrefix + table; }
         function factKey(factor) { return 'f' + factor; }
 
         /* =====================================================================
@@ -1903,13 +2297,13 @@
             return data;
         }
 
-        function blankMult() {
+        function blankGame(game) {
             const data = {};
             MODULE_TABLES.forEach(function (table) {
-                data[moduleKey(table)] = {
-                    mastery: null, masteredFacts: {}, bestCleared: 0,
-                    bestFloors: 0, bestFloorsOutOf: MULT_FLOORS_PER_RUN, attempts: {}
-                };
+                const mod = { mastery: null, masteredFacts: {}, bestCleared: 0, attempts: {} };
+                mod[game.bestKey] = 0;
+                mod[game.bestOutOfKey] = RUN_UNITS;
+                data[moduleKey(game, table)] = mod;
             });
             return data;
         }
@@ -1929,18 +2323,24 @@
                 };
             });
 
-            record.mult = record.mult || {};
-            MODULE_TABLES.forEach(function (table) {
-                const mod = record.mult[moduleKey(table)] || {};
-                record.mult[moduleKey(table)] = {
-                    mastery: mod.mastery || null,
-                    masteredFacts: mod.masteredFacts || {},
-                    bestCleared: mod.bestCleared || 0,
-                    bestFloors: mod.bestFloors || 0,
+            GAME_KINDS.forEach(function (kind) {
+                const game = GAMES[kind];
+                const branch = record[game.store] || {};
+                record[game.store] = branch;
+                MODULE_TABLES.forEach(function (table) {
+                    const key = moduleKey(game, table);
+                    const mod = branch[key] || {};
+                    const clean = {
+                        mastery: mod.mastery || null,
+                        masteredFacts: mod.masteredFacts || {},
+                        bestCleared: mod.bestCleared || 0,
+                        attempts: mod.attempts || {}
+                    };
+                    clean[game.bestKey] = mod[game.bestKey] || 0;
                     // Climbs recorded before the tower grew were scored out of 12 floors.
-                    bestFloorsOutOf: mod.bestFloorsOutOf || FACTS_PER_MODULE,
-                    attempts: mod.attempts || {}
-                };
+                    clean[game.bestOutOfKey] = mod[game.bestOutOfKey] || FACTS_PER_MODULE;
+                    branch[key] = clean;
+                });
             });
             return record;
         }
@@ -2698,13 +3098,28 @@
             showScreen('level-select-screen');
         }
 
-        function showModuleSelect() {
+        // One screen serves both games; `kind` says which. Called with no argument from the
+        // places that come back to wherever the student already was (results, cancel, end).
+        function showModuleSelect(kind) {
             if (!student) { showScreen('welcome-screen'); return; }
+            if (GAMES[kind]) moduleKind = kind;
+            else if (isGameRun()) moduleKind = runKind;
+            const game = GAMES[moduleKind];
             paintWhoAmI();
+
+            $('module-screen-title').textContent = game.emoji + ' ' + game.name;
+            $('module-screen-blurb').innerHTML =
+                'Every ' + game.runNoun + ' is <strong>' + RUN_QUESTIONS + ' questions</strong> over ' +
+                '<strong>' + RUN_UNITS + ' ' + game.unitMany + '</strong>. Answer in under ' +
+                '<strong>' + FULL_SECONDS + ' seconds</strong> to ' + game.gainFull + ', or under ' +
+                '<strong>' + HALF_SECONDS + ' seconds</strong> for <strong>' + game.gainHalf +
+                '</strong>. The first ' + FACTS_PER_MODULE + ' questions cover the whole set, then the ' +
+                RUN_REPEAT_QUESTIONS + ' you missed — or answered slowest — come back around. ' +
+                'Nail all ' + RUN_QUESTIONS + ' to finish!';
 
             const grid = $('module-grid');
             grid.innerHTML = MODULE_TABLES.map(function (table) {
-                const mod = student.mult[moduleKey(table)];
+                const mod = student[game.store][moduleKey(game, table)];
                 const facts = mod.masteredFacts || {};
                 const clearedCount = countQuestionsAtTier(facts, 'ACCOMPLISHED');
                 const percent = Math.round((clearedCount / FACTS_PER_MODULE) * 100);
@@ -2714,12 +3129,13 @@
                 else if (mod.mastery === 'ACCOMPLISHED') badge = '<span class="module-badge">🥈</span>';
                 else if (mod.mastery === 'BASIC') badge = '<span class="module-badge">🥉</span>';
 
-                return '<div class="module-card" onclick="startCountdown(\'mult\', ' + table + ')">' +
+                return '<div class="module-card ' + game.moduleCardClass +
+                    '" onclick="startCountdown(\'' + game.kind + '\', ' + table + ')">' +
                     badge +
-                    '<h3>×' + table + '</h3>' +
-                    '<div class="module-sub">' + table + ' × 1 … ' + table + ' × 12</div>' +
+                    '<h3>' + game.moduleLabel(table) + '</h3>' +
+                    '<div class="module-sub">' + game.moduleSub(table) + '</div>' +
                     '<div class="module-meter"><div class="module-meter-fill" style="width:' + percent + '%;"></div></div>' +
-                    '<div class="module-stat">' + clearedCount + '/' + FACTS_PER_MODULE + ' facts under ' + MULT_HALF_SECONDS + 's' +
+                    '<div class="module-stat">' + clearedCount + '/' + FACTS_PER_MODULE + ' facts under ' + HALF_SECONDS + 's' +
                         (mod.mastery ? ' · ' + mod.mastery : '') + '</div>' +
                     '</div>';
             }).join('');
@@ -2781,9 +3197,9 @@
         function startCountdown(kind, key) {
             runKind = kind;
             runKey = key;
-            $('countdown-run-name').textContent = kind === 'levels'
-                ? levels[key].name
-                : '×' + key + ' Sky Climber';
+            $('countdown-run-name').textContent = GAMES[kind]
+                ? GAMES[kind].moduleLabel(key) + ' ' + GAMES[kind].name
+                : levels[key].name;
 
             let count = 5;
             $('countdown-number').textContent = count;
@@ -2807,7 +3223,7 @@
                 clearInterval(countdownInterval);
                 countdownInterval = null;
             }
-            if (runKind === 'mult') showModuleSelect(); else showLevelSelect();
+            if (isGameRun()) showModuleSelect(); else showLevelSelect();
         }
 
         function startRun() {
@@ -2821,7 +3237,7 @@
             $('answer-input').value = '';
             $('question-text').textContent = '…';
 
-            if (runKind === 'mult') startMultRun(); else startLevelsRun();
+            if (isGameRun()) startGameRun(); else startLevelsRun();
 
             showScreen('question-screen');
             setTimeout(showNextQuestion, 60);
@@ -2850,7 +3266,7 @@
          * MATH FACTS LEVELS RUN
          * ===================================================================*/
         function startLevelsRun() {
-            document.body.classList.remove('mode-climb');
+            setSceneMode(null);
 
             questions = buildLevelQuestions(runKey);
 
@@ -2905,45 +3321,51 @@
         }
 
         /* =====================================================================
-         * SKY CLIMBER (MULTIPLICATION) RUN
+         * FACT GAMES: SKY CLIMBER (×) AND SEA DIVER (÷)
+         *
+         * One engine, two scenes. Everything below is shared except the handful of
+         * per-game bits it reads out of GAMES, and the two scene painters at the end.
          * ===================================================================*/
-        function startMultRun() {
-            document.body.classList.add('mode-climb');
+
+        // Both scenes live in the page at once; these body classes decide which one is on
+        // screen. `null` hides both, which is what a Math Facts Levels round wants.
+        function setSceneMode(game) {
+            GAME_KINDS.forEach(function (kind) {
+                document.body.classList.toggle(GAMES[kind].bodyClass, !!game && game.kind === kind);
+            });
+            document.body.classList.toggle('mode-game', !!game);
+        }
+
+        function startGameRun() {
+            const game = gameCfg();
+            setSceneMode(game);
             $('run-status-display').innerHTML = '';
 
-            // The opening 12 questions are the whole table, shuffled. The last 8 are chosen once
+            // The opening 12 questions are the whole set, shuffled. The last 8 are chosen once
             // that pass is done, from the facts that actually gave the student trouble.
-            multSequence = shuffle(allFactors());
-            multCleared = [];
-            multCredit = {};
-            multProgress = 0;
-            multLastFactor = null;
-            multAsked = 0;
-            multCurrent = null;
-            multTowerCelebrated = false;
-            multFactsCelebrated = false;
+            factSequence = shuffle(allFactors());
+            factCleared = [];
+            factCredit = {};
+            runProgress = 0;
+            lastFactor = null;
+            factsAsked = 0;
+            factCurrent = null;
+            goalCelebrated = false;
+            allFactsCelebrated = false;
 
-            buildTower(MULT_FLOORS_PER_RUN);
+            game.setupScene();
             renderFactTracker();
-            updateClimber(null);
-            clearTimeout(climberAnimationTimer);
-            $('climber').classList.remove('jump', 'half-jump', 'slip');
-            $('climb-flag').classList.remove('reached');
-            $('confetti-layer').innerHTML = '';
-            $('climb-caption').textContent = 'Under ' + MULT_FULL_SECONDS + 's = full floor \u00b7 under ' +
-                MULT_HALF_SECONDS + 's = half floor';
+            updateScene(null);
+            setCaption(defaultCaption());
         }
 
-        function buildTower(floors) {
-            const container = $('tower-floors');
-            let html = '';
-            for (let i = 0; i < floors; i++) {
-                html += '<div class="tower-floor" data-floor="' + i + '">' +
-                        '<div class="tower-window"></div><div class="tower-window"></div>' +
-                        '</div>';
-            }
-            container.innerHTML = html;
+        function defaultCaption() {
+            const game = gameCfg();
+            return 'Under ' + FULL_SECONDS + 's = full ' + game.unitOne + ' \u00b7 under ' +
+                   HALF_SECONDS + 's = half ' + game.unitOne;
         }
+
+        function setCaption(text) { $(gameCfg().captionId).textContent = text; }
 
         function allFactors() {
             const list = [];
@@ -2951,69 +3373,84 @@
             return list;
         }
 
-        // Floors climbed this run, capped at the top of the tower.
-        function climbFloors() {
-            return Math.min(multProgress, MULT_FLOORS_PER_RUN);
+        // Units of progress earned this run, capped at the end of the scene.
+        function unitsDone() {
+            return Math.min(runProgress, RUN_UNITS);
         }
 
-        function formatFloors(value) {
+        function formatUnits(value) {
             return value % 1 === 0 ? String(value) : value.toFixed(1);
         }
 
-        // Every one of the 20 questions is worth its own floor: 1 at mastery speed, 0.5 at half
-        // speed, 0 otherwise. 20 questions, 20 floors, so a flawless climb reaches the roof.
-        function climbFloor(credit, mode) {
-            multProgress = Math.min(multProgress + credit, MULT_FLOORS_PER_RUN);
+        // Every one of the 20 questions is worth one unit: 1 at mastery speed, 0.5 at half
+        // speed, 0 otherwise. 20 questions, 20 units, so a flawless run finishes the scene.
+        function awardUnits(credit, mode) {
+            runProgress = Math.min(runProgress + credit, RUN_UNITS);
             renderFactTracker();
-            updateClimber(mode);
+            updateScene(mode);
         }
 
-        // The fact tracker pills show the best a fact has been answered so far this climb.
+        // The fact tracker pills show the best a fact has been answered so far this run.
         function noteFactCredit(factor, credit) {
-            if (credit > (multCredit[factor] || 0)) multCredit[factor] = credit;
+            if (credit > (factCredit[factor] || 0)) factCredit[factor] = credit;
         }
 
-        // mode: null (no animation), 'full' (mastery jump) or 'half' (half-speed pull-up)
-        function updateClimber(mode) {
-            const floors = climbFloors();
-            $('climb-scene').style.setProperty('--h', String(floors / MULT_FLOORS_PER_RUN));
-            $('climb-hud').textContent = 'Floor ' + formatFloors(floors) + ' / ' + MULT_FLOORS_PER_RUN +
-                ' \u00b7 ' + multCleared.length + ' cleared';
+        // mode: null (no animation), 'full' (mastery move) or 'half' (half-speed move)
+        function updateScene(mode) {
+            const game = gameCfg();
+            const units = unitsDone();
+            $(game.hudId).textContent = game.unitLabel + ' ' + formatUnits(units) + ' / ' + RUN_UNITS +
+                ' \u00b7 ' + factCleared.length + ' cleared';
+            game.paintScene(units, mode);
+        }
 
-            const whole = Math.floor(floors);
-            const floorEls = $('tower-floors').children;
-            for (let i = 0; i < floorEls.length; i++) {
-                floorEls[i].classList.toggle('lit', i < whole);
-                floorEls[i].classList.toggle('half-lit', i === whole && floors - whole >= 0.5);
+        // Both scenes are the same 20-step ladder of markers; only the CSS decides whether it
+        // reads bottom-up as a tower or top-down as a trench.
+        function buildLadder(containerId, count, rowClass, cellClass) {
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                html += '<div class="' + rowClass + '" data-step="' + i + '">' +
+                        '<div class="' + cellClass + '"></div><div class="' + cellClass + '"></div>' +
+                        '</div>';
             }
+            $(containerId).innerHTML = html;
+        }
 
-            if (mode === 'full') playClimberAnimation('jump', 620);
-            else if (mode === 'half') playClimberAnimation('half-jump', 620);
-
-            if (floors >= MULT_FLOORS_PER_RUN) {
-                $('climb-flag').classList.add('reached');
+        // Steps below the whole number are done; half credit lights one marker of the next one.
+        function litUpTo(containerId, units) {
+            const whole = Math.floor(units);
+            const rows = $(containerId).children;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].classList.toggle('lit', i < whole);
+                rows[i].classList.toggle('half-lit', i === whole && units - whole >= 0.5);
             }
         }
 
-        // Runs a one-shot climber animation, then drops the class so the idle bob resumes.
-        let climberAnimationTimer = null;
-        function playClimberAnimation(className, duration) {
-            const climber = $('climber');
-            clearTimeout(climberAnimationTimer);
-            climber.classList.remove('jump', 'half-jump', 'slip');
-            void climber.offsetWidth;   // restart the animation
-            climber.classList.add(className);
-            climberAnimationTimer = setTimeout(function () {
-                climber.classList.remove(className);
+        // Every one-shot animation either scene can play, so resetting never has to know which.
+        const SCENE_ANIMATIONS = ['jump', 'half-jump', 'slip', 'kick', 'half-kick', 'tumble'];
+        let sceneAnimationTimer = null;
+
+        // Runs a one-shot animation on the mover, then drops the class so the idle loop resumes.
+        function playSceneAnimation(elementId, className, duration) {
+            const el = $(elementId);
+            resetSceneAnimations(elementId);
+            void el.offsetWidth;   // restart the animation
+            el.classList.add(className);
+            sceneAnimationTimer = setTimeout(function () {
+                sceneAnimationTimer = null;
+                el.classList.remove(className);
             }, duration);
         }
 
-        function slipClimber() {
-            playClimberAnimation('slip', 520);
+        function resetSceneAnimations(elementId) {
+            clearTimeout(sceneAnimationTimer);
+            sceneAnimationTimer = null;
+            const el = $(elementId);
+            SCENE_ANIMATIONS.forEach(function (name) { el.classList.remove(name); });
         }
 
-        function climbToast(text) {
-            const toast = $('climb-toast');
+        function gameToast(text) {
+            const toast = $(gameCfg().toastId);
             toast.textContent = text;
             toast.classList.remove('show');
             void toast.offsetWidth;
@@ -3021,15 +3458,16 @@
         }
 
         function celebrate() {
-            const layer = $('confetti-layer');
-            layer.style.setProperty('--fall', ($('climb-scene').offsetHeight + 40) + 'px');
-            const pieces = ['🎉', '⭐', '✨', '🎊', '🏆', '💫'];
+            const game = gameCfg();
+            const layer = $(game.burstId);
+            layer.style.setProperty('--travel', ($(game.sceneId).offsetHeight + 40) + 'px');
+            const pieces = game.burstPieces;
             let html = '';
             for (let i = 0; i < 26; i++) {
                 const left = Math.random() * 100;
                 const delay = Math.random() * 0.8;
                 const duration = 1.8 + Math.random() * 1.4;
-                html += '<span class="confetti" style="left:' + left.toFixed(1) + '%;' +
+                html += '<span class="' + game.burstClass + '" style="left:' + left.toFixed(1) + '%;' +
                         'animation-delay:' + delay.toFixed(2) + 's;' +
                         'animation-duration:' + duration.toFixed(2) + 's;">' +
                         pieces[i % pieces.length] + '</span>';
@@ -3038,22 +3476,23 @@
         }
 
         function renderFactTracker() {
+            const game = gameCfg();
             const tracker = $('fact-tracker');
             let html = '';
             for (let factor = 1; factor <= FACTS_PER_MODULE; factor++) {
-                const credit = multCredit[factor] || 0;
+                const credit = factCredit[factor] || 0;
                 const state = credit >= 1 ? ' cleared' : (credit >= 0.5 ? ' partial' : '');
                 html += '<span class="fact-pill' + state + '">' +
-                        runKey + '×' + factor + '</span>';
+                        game.factLabel(runKey, factor) + '</span>';
             }
             tracker.innerHTML = html;
         }
 
-        // Picks the 8 repeat questions once the opening pass over the table is done. Facts the
+        // Picks the 8 repeat questions once the opening pass over the set is done. Facts the
         // student got wrong come back first; after those - or instead of them, when nothing was
-        // missed - the slowest answers come back. `answers` is index-aligned with multSequence.
-        function buildMultRepeats() {
-            const ranked = multSequence.slice(0, MULT_BASE_QUESTIONS).map(function (factor, i) {
+        // missed - the slowest answers come back. `answers` is index-aligned with factSequence.
+        function buildFactRepeats() {
+            const ranked = factSequence.slice(0, RUN_BASE_QUESTIONS).map(function (factor, i) {
                 const answer = answers[i] || {};
                 return {
                     factor: factor,
@@ -3065,13 +3504,13 @@
                 return b.time - a.time;                                   // then the slowest
             });
 
-            const repeats = ranked.slice(0, MULT_REPEAT_QUESTIONS).map(function (r) { return r.factor; });
-            // Only reachable if a question somehow went unanswered; keeps the climb at 20 questions.
-            while (repeats.length < MULT_REPEAT_QUESTIONS && ranked.length) {
+            const repeats = ranked.slice(0, RUN_REPEAT_QUESTIONS).map(function (r) { return r.factor; });
+            // Only reachable if a question somehow went unanswered; keeps the run at 20 questions.
+            while (repeats.length < RUN_REPEAT_QUESTIONS && ranked.length) {
                 repeats.push(ranked[repeats.length % ranked.length].factor);
             }
             // Don't ask the same fact twice in a row across the seam into the repeats.
-            if (repeats.length > 1 && repeats[0] === multLastFactor) {
+            if (repeats.length > 1 && repeats[0] === lastFactor) {
                 const first = repeats[0];
                 repeats[0] = repeats[1];
                 repeats[1] = first;
@@ -3079,38 +3518,63 @@
             return repeats;
         }
 
-        function nextMultQuestion(factor) {
-            multLastFactor = factor;
-            // Show the fact in either order so students see the commutative pair.
-            const flipped = Math.random() < 0.5;
-            multCurrent = {
-                table: runKey,
-                factor: factor,
-                answer: runKey * factor,
-                display: flipped ? (factor + ' × ' + runKey) : (runKey + ' × ' + factor)
-            };
-            return multCurrent;
+        function nextFactQuestion(factor) {
+            lastFactor = factor;
+            factCurrent = gameCfg().buildQuestion(runKey, factor);
+            return factCurrent;
+        }
+
+        /* ---------- Sky Climber scene: 20 floors, climbed bottom to top ---------- */
+        function setupClimbScene() {
+            buildLadder('tower-floors', RUN_UNITS, 'tower-floor', 'tower-window');
+            resetSceneAnimations('climber');
+            $('climb-flag').classList.remove('reached');
+            $('confetti-layer').innerHTML = '';
+        }
+
+        function paintClimbScene(units, mode) {
+            $('climb-scene').style.setProperty('--h', String(units / RUN_UNITS));
+            litUpTo('tower-floors', units);
+            if (mode === 'full') playSceneAnimation('climber', 'jump', 620);
+            else if (mode === 'half') playSceneAnimation('climber', 'half-jump', 620);
+            if (units >= RUN_UNITS) $('climb-flag').classList.add('reached');
+        }
+
+        /* ---------- Sea Diver scene: 20 depths, dived top to bottom ---------- */
+        function setupDiveScene() {
+            buildLadder('trench-marks', RUN_UNITS, 'depth-zone', 'depth-tick');
+            resetSceneAnimations('diver');
+            $('dive-treasure').classList.remove('reached');
+            $('bubble-burst-layer').innerHTML = '';
+        }
+
+        function paintDiveScene(units, mode) {
+            $('dive-scene').style.setProperty('--d', String(units / RUN_UNITS));
+            litUpTo('trench-marks', units);
+            if (mode === 'full') playSceneAnimation('diver', 'kick', 620);
+            else if (mode === 'half') playSceneAnimation('diver', 'half-kick', 620);
+            if (units >= RUN_UNITS) $('dive-treasure').classList.add('reached');
         }
 
         /* =====================================================================
          * QUESTION FLOW
          * ===================================================================*/
         function showNextQuestion() {
-            if (runKind === 'mult') {
-                // A climb is always the full 20 questions, even once every fact has been cleared.
-                if (multAsked >= MULT_QUESTIONS_PER_RUN) {
+            if (isGameRun()) {
+                // A run is always the full 20 questions, even once every fact has been cleared.
+                if (factsAsked >= RUN_QUESTIONS) {
                     finishRun();
                     return;
                 }
                 // The repeats are only known once the opening pass has been answered.
-                if (multSequence.length <= multAsked) {
-                    multSequence = multSequence.concat(buildMultRepeats());
+                if (factSequence.length <= factsAsked) {
+                    factSequence = factSequence.concat(buildFactRepeats());
                 }
-                const question = nextMultQuestion(multSequence[multAsked]);
-                multAsked++;
+                const question = nextFactQuestion(factSequence[factsAsked]);
+                factsAsked++;
                 $('question-text').textContent = question.display + ' = ?';
-                $('progress-label').textContent = 'Question ' + multAsked + ' of ' + MULT_QUESTIONS_PER_RUN;
-                $('progress-fill').style.width = (((multAsked - 1) / MULT_QUESTIONS_PER_RUN) * 100) + '%';
+                $('progress-label').textContent = 'Question ' + factsAsked + ' of ' + RUN_QUESTIONS;
+                $('progress-fill').style.width = (((factsAsked - 1) / RUN_QUESTIONS) * 100) + '%';
             } else {
                 if (currentQuestion >= questions.length) {
                     finishRun();
@@ -3139,7 +3603,7 @@
         }
 
         function currentQuestionObject() {
-            return runKind === 'mult' ? multCurrent : questions[currentQuestion];
+            return isGameRun() ? factCurrent : questions[currentQuestion];
         }
 
         function checkAnswer() {
@@ -3210,62 +3674,60 @@
             let tier;
             let delay = 1200;
 
-            if (runKind === 'mult') {
-                tier = tierFromTime(timeTaken, MULT_TIMINGS);
-                const label = question.table + '×' + question.factor;
-                const wasCleared = multCleared.indexOf(question.factor) !== -1;
+            if (isGameRun()) {
+                const game = gameCfg();
+                tier = tierFromTime(timeTaken, GAME_TIMINGS);
+                const label = game.factLabel(question.table, question.factor);
+                const wasCleared = factCleared.indexOf(question.factor) !== -1;
 
-                if (timeTaken <= MULT_FULL_SECONDS) {
-                    // Mastery speed: a full floor, and the fact counts as cleared for this climb.
-                    if (!wasCleared) multCleared.push(question.factor);
+                if (timeTaken <= FULL_SECONDS) {
+                    // Mastery speed: a full unit, and the fact counts as cleared for this run.
+                    if (!wasCleared) factCleared.push(question.factor);
                     noteFactCredit(question.factor, 1);
-                    climbFloor(1, 'full');
+                    awardUnits(1, 'full');
 
                     if (wasCleared) {
-                        climbToast('⚡ ' + label + ' again!');
+                        gameToast('⚡ ' + label + ' again!');
                         $('achievement-display').innerHTML =
                             '<span class="achievement-indicator achievement-mastery">⚡ Still lightning fast on ' +
-                            label + ' — another full floor</span>';
+                            label + ' — another full ' + game.unitOne + '</span>';
                     } else {
-                        climbToast('▲ ' + label + ' cleared!');
+                        gameToast(game.fullIcon + ' ' + label + ' cleared!');
                         $('achievement-display').innerHTML =
                             '<span class="achievement-indicator achievement-mastery">⭐ Under ' +
-                            MULT_FULL_SECONDS + 's — full floor, fact cleared!</span>';
+                            FULL_SECONDS + 's — full ' + game.unitOne + ', fact cleared!</span>';
                     }
 
-                    if (multCleared.length >= FACTS_PER_MODULE && !multFactsCelebrated) {
-                        multFactsCelebrated = true;
-                        climbToast('🎯 ALL ' + FACTS_PER_MODULE + ' FACTS!');
-                        $('climb-caption').textContent =
-                            'Every fact cleared! Keep climbing — each question is another floor.';
+                    if (factCleared.length >= FACTS_PER_MODULE && !allFactsCelebrated) {
+                        allFactsCelebrated = true;
+                        gameToast('🎯 ALL ' + FACTS_PER_MODULE + ' FACTS!');
+                        setCaption(game.allFactsCaption);
                         delay = 1800;
                     }
-                } else if (timeTaken <= MULT_HALF_SECONDS) {
-                    // Half speed: this question is worth half a floor.
+                } else if (timeTaken <= HALF_SECONDS) {
+                    // Half speed: this question is worth half a unit.
                     noteFactCredit(question.factor, 0.5);
-                    climbFloor(0.5, 'half');
+                    awardUnits(0.5, 'half');
 
-                    climbToast('△ half a floor');
+                    gameToast(game.halfIcon + ' half a ' + game.unitOne);
                     $('achievement-display').innerHTML =
-                        '<span class="achievement-indicator achievement-accomplished">🕸️ Under ' +
-                        MULT_HALF_SECONDS + 's — half a floor. Under ' + MULT_FULL_SECONDS +
-                        's climbs a whole one!</span>';
-                    $('climb-caption').textContent = 'Half speed! Under ' + MULT_FULL_SECONDS +
-                        's climbs a full floor.';
+                        '<span class="achievement-indicator achievement-accomplished">' + game.emoji +
+                        ' Under ' + HALF_SECONDS + 's — half a ' + game.unitOne + '. Under ' +
+                        FULL_SECONDS + 's earns a whole one!</span>';
+                    setCaption('Half speed! Under ' + FULL_SECONDS + 's ' + game.verbFull + '.');
                 } else {
                     $('achievement-display').innerHTML =
                         '<span class="achievement-indicator achievement-basic">Correct, but over ' +
-                        MULT_HALF_SECONDS + 's — no climb this time</span>';
-                    $('climb-caption').textContent = 'Correct! Answer under ' + MULT_HALF_SECONDS +
-                        's to start climbing.';
+                        HALF_SECONDS + 's — no ' + game.noProgressWord + ' this time</span>';
+                    setCaption('Correct! Answer under ' + HALF_SECONDS + 's to start ' +
+                        game.startWord + '.');
                 }
 
-                if (climbFloors() >= MULT_FLOORS_PER_RUN && !multTowerCelebrated) {
-                    multTowerCelebrated = true;
+                if (unitsDone() >= RUN_UNITS && !goalCelebrated) {
+                    goalCelebrated = true;
                     celebrate();
-                    climbToast('🏆 TOP FLOOR!');
-                    $('climb-caption').textContent = 'All ' + MULT_FLOORS_PER_RUN +
-                        ' floors — you reached the roof!';
+                    gameToast(game.goalToast);
+                    setCaption(game.goalCaption);
                     delay = 2400;
                 }
             } else {
@@ -3299,11 +3761,11 @@
             $('answer-time').textContent = '⏱️ ' + timeTaken.toFixed(1) + 's';
             $('achievement-display').innerHTML = '';
 
-            if (runKind === 'mult') {
-                slipClimber();
-                climbToast('😬 Hold on!');
-                $('climb-caption').textContent = 'Under ' + MULT_FULL_SECONDS + 's = full floor \u00b7 under ' +
-                    MULT_HALF_SECONDS + 's = half floor';
+            if (isGameRun()) {
+                const game = gameCfg();
+                game.missScene();
+                gameToast(game.missToast);
+                setCaption(defaultCaption());
             }
 
             recordAnswer(question, userAnswer, false, null, timeTaken);
@@ -3312,8 +3774,8 @@
 
         function recordAnswer(question, userAnswer, correct, tier, timeTaken) {
             answers.push({
-                key: runKind === 'mult' ? factKey(question.factor) : question.key,
-                label: runKind === 'mult' ? question.display : (question.num1 + ' ' + question.op + ' ' + question.num2),
+                key: isGameRun() ? factKey(question.factor) : question.key,
+                label: isGameRun() ? question.display : (question.num1 + ' ' + question.op + ' ' + question.num2),
                 correctAnswer: question.answer,
                 userAnswer: userAnswer,
                 correct: correct,
@@ -3323,7 +3785,7 @@
         }
 
         function advanceQuestion() {
-            if (runKind === 'mult') {
+            if (isGameRun()) {
                 showNextQuestion();
             } else {
                 currentQuestion++;
@@ -3335,7 +3797,7 @@
             if (!confirm('End this session? Your progress from this round will not be saved.')) return;
             stopRunTimers();
             isProcessingAnswer = true;
-            if (runKind === 'mult') showModuleSelect(); else showLevelSelect();
+            if (isGameRun()) showModuleSelect(); else showLevelSelect();
         }
 
         /* =====================================================================
@@ -3344,7 +3806,7 @@
         function finishRun() {
             stopRunTimers();
             isProcessingAnswer = true;
-            if (runKind === 'mult') finishMultRun(); else finishLevelsRun();
+            if (isGameRun()) finishGameRun(); else finishLevelsRun();
         }
 
         function statCard(value, label) {
@@ -3450,18 +3912,19 @@
             });
         }
 
-        async function finishMultRun() {
+        async function finishGameRun() {
+            const game = gameCfg();
             const table = runKey;
-            const key = moduleKey(table);
-            const mod = student.mult[key];
+            const key = moduleKey(game, table);
+            const mod = student[game.store][key];
 
             const correctCount = answers.filter(function (a) { return a.correct; }).length;
             const totalTime = answers.reduce(function (sum, a) { return sum + a.time; }, 0);
             const avgTime = answers.length ? totalTime / answers.length : 0;
             const accuracy = answers.length ? (correctCount / answers.length) * 100 : 0;
-            const clearedThisRun = multCleared.length;
-            const floorsThisRun = climbFloors();
-            const towerComplete = floorsThisRun >= MULT_FLOORS_PER_RUN;
+            const clearedThisRun = factCleared.length;
+            const unitsThisRun = unitsDone();
+            const goalReached = unitsThisRun >= RUN_UNITS;
 
             const facts = Object.assign({}, mod.masteredFacts || {});
             answers.forEach(function (a) {
@@ -3481,15 +3944,15 @@
 
             mod.masteredFacts = facts;
             mod.bestCleared = Math.max(mod.bestCleared || 0, clearedThisRun);
-            // Compare as a fraction of the tower so a best set on the old 12-floor tower still
-            // means something next to a climb scored out of 20.
-            const priorFloors = mod.bestFloors || 0;
-            const priorOutOf = mod.bestFloorsOutOf || FACTS_PER_MODULE;
-            if (!priorFloors || floorsThisRun / MULT_FLOORS_PER_RUN >= priorFloors / priorOutOf) {
-                mod.bestFloors = floorsThisRun;
-                mod.bestFloorsOutOf = MULT_FLOORS_PER_RUN;
+            // Compare as a fraction of the whole scene so a best set on the old 12-floor tower
+            // still means something next to a run scored out of 20.
+            const priorBest = mod[game.bestKey] || 0;
+            const priorOutOf = mod[game.bestOutOfKey] || FACTS_PER_MODULE;
+            if (!priorBest || unitsThisRun / RUN_UNITS >= priorBest / priorOutOf) {
+                mod[game.bestKey] = unitsThisRun;
+                mod[game.bestOutOfKey] = RUN_UNITS;
             } else {
-                mod.bestFloorsOutOf = priorOutOf;
+                mod[game.bestOutOfKey] = priorOutOf;
             }
             if (mastery && (TIER_ORDER[mastery] || 0) > (TIER_ORDER[mod.mastery] || 0)) {
                 mod.mastery = mastery;
@@ -3502,9 +3965,7 @@
                 correctCount: correctCount,
                 totalQuestions: answers.length,
                 factsCleared: clearedThisRun,
-                floorsClimbed: floorsThisRun,
-                floorsPossible: MULT_FLOORS_PER_RUN,
-                towerComplete: towerComplete,
+                goalReached: goalReached,
                 avgTime: avgTime,
                 accuracy: accuracy,
                 mastery: mastery,
@@ -3515,13 +3976,15 @@
                     };
                 })
             };
+            attempt[game.attemptUnitsKey] = unitsThisRun;
+            attempt[game.attemptOutOfKey] = RUN_UNITS;
 
-            $('results-title').textContent = towerComplete
-                ? '🏆 ×' + table + ' Tower Complete!'
-                : '🕸️ ×' + table + ' Climb Finished';
+            $('results-title').textContent = goalReached
+                ? game.doneTitle(table)
+                : game.partialTitle(table);
 
             $('results-stats').innerHTML =
-                statCard(formatFloors(floorsThisRun) + '/' + MULT_FLOORS_PER_RUN, 'Floors Climbed') +
+                statCard(formatUnits(unitsThisRun) + '/' + RUN_UNITS, game.statLabel) +
                 statCard(clearedThisRun + '/' + FACTS_PER_MODULE, 'Facts Cleared') +
                 statCard(correctCount + '/' + answers.length, 'Correct') +
                 statCard(avgTime.toFixed(1) + 's', 'Avg Time') +
@@ -3530,17 +3993,17 @@
             const badge = $('mastery-badge');
             let html = '';
             if (mastery) {
-                html += '<div class="mastery-badge mastery-' + mastery.toLowerCase() + '">×' + table + ' ' + mastery + '</div>';
+                html += '<div class="mastery-badge mastery-' + mastery.toLowerCase() + '">' +
+                        game.moduleLabel(table) + ' ' + mastery + '</div>';
             }
-            if (towerComplete) {
-                html += '<p style="color:#28a745; font-weight:bold;">All ' + MULT_QUESTIONS_PER_RUN +
-                        ' questions under ' + MULT_FULL_SECONDS + 's — you climbed every one of the ' +
-                        MULT_FLOORS_PER_RUN + ' floors and reached the roof! 🚩</p>';
+            if (goalReached) {
+                html += '<p style="color:#28a745; font-weight:bold;">All ' + RUN_QUESTIONS +
+                        ' questions under ' + FULL_SECONDS + 's — ' + game.goalResult + '</p>';
             } else {
-                html += '<p style="color:#666;">You climbed ' + formatFloors(floorsThisRun) + ' of ' +
-                        MULT_FLOORS_PER_RUN + ' floors and cleared ' + clearedThisRun + ' fact' +
-                        (clearedThisRun === 1 ? '' : 's') + '. Under ' + MULT_FULL_SECONDS +
-                        's climbs a full floor, under ' + MULT_HALF_SECONDS + 's climbs half a floor.</p>';
+                html += '<p style="color:#666;">You reached ' + formatUnits(unitsThisRun) + ' of ' +
+                        RUN_UNITS + ' ' + game.unitMany + ' and cleared ' + clearedThisRun + ' fact' +
+                        (clearedThisRun === 1 ? '' : 's') + '. Under ' + FULL_SECONDS + 's ' +
+                        game.verbFull + ', under ' + HALF_SECONDS + 's ' + game.verbHalf + '.</p>';
             }
             html += '<p style="color:#666; font-size:14px; margin-top:8px;">Module progress — ' +
                     'BASIC ' + atBasic + '/' + FACTS_PER_MODULE + ' · ' +
@@ -3548,25 +4011,26 @@
                     'MASTERY ' + atMastery + '/' + FACTS_PER_MODULE + '</p>';
             badge.innerHTML = html;
 
-            $('results-back-btn').textContent = 'Back to Modules';
+            $('results-back-btn').textContent = 'Back to ' + game.name;
             showScreen('results-screen');
 
             await saveRound(function () {
+                const base = game.store + '/' + key + '/';
                 const updates = {};
-                updates['mult/' + key + '/masteredFacts'] = facts;
-                updates['mult/' + key + '/bestCleared'] = mod.bestCleared;
-                updates['mult/' + key + '/bestFloors'] = mod.bestFloors;
-                updates['mult/' + key + '/bestFloorsOutOf'] = mod.bestFloorsOutOf;
-                updates['mult/' + key + '/mastery'] = mod.mastery;
+                updates[base + 'masteredFacts'] = facts;
+                updates[base + 'bestCleared'] = mod.bestCleared;
+                updates[base + game.bestKey] = mod[game.bestKey];
+                updates[base + game.bestOutOfKey] = mod[game.bestOutOfKey];
+                updates[base + 'mastery'] = mod.mastery;
                 return studentRef().update(updates).then(function () {
-                    return studentRef('mult/' + key + '/attempts').push(attempt);
+                    return studentRef(base + 'attempts').push(attempt);
                 });
             });
         }
 
         function backFromResults() {
             setMessage('results-banner', '', '');
-            if (runKind === 'mult') showModuleSelect(); else showLevelSelect();
+            if (isGameRun()) showModuleSelect(); else showLevelSelect();
         }
 
         function retryRun() {
@@ -3633,13 +4097,25 @@
                     (level.mastery ? ' · ' + level.mastery : '') + lock + '</span>';
             }).join('');
 
-            const multChips = MODULE_TABLES.map(function (table) {
-                const mod = record.mult[moduleKey(table)];
-                const fast = countQuestionsAtTier(mod.masteredFacts || {}, 'ACCOMPLISHED');
-                const done = fast === FACTS_PER_MODULE;
-                return '<span class="mini-chip' + (done ? ' done' : '') + '">' +
-                    '<strong>×' + table + '</strong> ' + fast + '/' + FACTS_PER_MODULE +
-                    (mod.mastery ? ' · ' + mod.mastery : '') + '</span>';
+            // One row of chips per fact game, each labelled with that game's emoji.
+            const gameRows = GAME_KINDS.map(function (kind) {
+                const game = GAMES[kind];
+                const chips = MODULE_TABLES.map(function (table) {
+                    const mod = record[game.store][moduleKey(game, table)];
+                    const fast = countQuestionsAtTier(mod.masteredFacts || {}, 'ACCOMPLISHED');
+                    const done = fast === FACTS_PER_MODULE;
+                    return '<span class="mini-chip' + (done ? ' done' : '') + '">' +
+                        '<strong>' + game.moduleLabel(table) + '</strong> ' + fast + '/' + FACTS_PER_MODULE +
+                        (mod.mastery ? ' · ' + mod.mastery : '') + '</span>';
+                }).join('');
+                return '<div class="mini-progress"><span class="mini-chip-label" title="' +
+                    esc(game.name) + '">' + game.emoji + '</span>' + chips + '</div>';
+            }).join('');
+
+            const gameResetButtons = GAME_KINDS.map(function (kind) {
+                const game = GAMES[kind];
+                return '<button class="btn btn-small btn-danger" onclick="resetStudentGame(\'' +
+                    record.id + '\', \'' + kind + '\')">Reset ' + game.name + '</button>';
             }).join('');
 
             return '<div class="student-card">' +
@@ -3658,7 +4134,7 @@
                     '</div>' +
                 '</div>' +
                 '<div class="mini-progress">' + levelChips + '</div>' +
-                '<div class="mini-progress">' + multChips + '</div>' +
+                gameRows +
                 '<div class="reset-controls">' +
                     '<label>Reset math facts to level:</label>' +
                     '<select id="reset-level-' + record.id + '">' +
@@ -3666,7 +4142,7 @@
                         LEVEL_KEYS.map(function (k) { return '<option value="' + k + '">' + levels[k].name + '</option>'; }).join('') +
                     '</select>' +
                     '<button class="btn btn-small btn-danger" onclick="resetStudentLevel(\'' + record.id + '\')">Reset</button>' +
-                    '<button class="btn btn-small btn-danger" onclick="resetStudentMult(\'' + record.id + '\')">Reset Sky Climber</button>' +
+                    gameResetButtons +
                 '</div>' +
             '</div>';
         }
@@ -3694,9 +4170,11 @@
                     teacherCode: teacher.code,
                     grade: teacher.classGrade,
                     createdAt: new Date().toISOString(),
-                    levels: blankLevels(teacher.classGrade),
-                    mult: blankMult()
+                    levels: blankLevels(teacher.classGrade)
                 };
+                GAME_KINDS.forEach(function (kind) {
+                    record[GAMES[kind].store] = blankGame(GAMES[kind]);
+                });
                 await db.ref('students').push(record);
                 input.value = '';
                 setMessage('add-student-message', 'success', '✅ ' + esc(name) + ' was added to your class.');
@@ -3801,19 +4279,21 @@
             }
         }
 
-        async function resetStudentMult(studentId) {
+        async function resetStudentGame(studentId, kind) {
             const record = rosterCache[studentId];
-            if (!record) return;
-            if (!confirm('Clear all Sky Climber (×2–×10) progress for ' + record.name + '?')) return;
+            const game = GAMES[kind];
+            if (!record || !game) return;
+            if (!confirm('Clear all ' + game.name + ' (' + game.range + ') progress for ' +
+                         record.name + '?')) return;
 
             try {
-                await db.ref('students/' + studentId + '/mult').set(blankMult());
+                await db.ref('students/' + studentId + '/' + game.store).set(blankGame(game));
                 await showTeacherView();
                 setMessage('add-student-message', 'success',
-                    'Sky Climber progress was cleared for ' + esc(record.name) + '.');
+                    game.name + ' progress was cleared for ' + esc(record.name) + '.');
             } catch (error) {
-                console.error('Could not reset Sky Climber:', error);
-                alert('Could not reset Sky Climber progress: ' + error.message);
+                console.error('Could not reset ' + game.name + ':', error);
+                alert('Could not reset ' + game.name + ' progress: ' + error.message);
             }
         }
 
@@ -3921,41 +4401,52 @@
                 html += '</div>';
             });
 
-            html += '<h3 style="margin:22px 0 10px; color:#c31432;">🕸️ Sky Climber (×2–×10)</h3>';
-            MODULE_TABLES.forEach(function (table) {
-                const mod = record.mult[moduleKey(table)];
-                const fast = countQuestionsAtTier(mod.masteredFacts || {}, 'ACCOMPLISHED');
-                const top = countQuestionsAtTier(mod.masteredFacts || {}, 'MASTERY');
-                const attempts = mod.attempts ? Object.values(mod.attempts) : [];
+            GAME_KINDS.forEach(function (kind) {
+                const game = GAMES[kind];
+                html += '<h3 style="margin:22px 0 10px; color:#c31432;">' + game.emoji + ' ' +
+                        game.name + ' (' + game.range + ')</h3>';
+                MODULE_TABLES.forEach(function (table) {
+                    const mod = record[game.store][moduleKey(game, table)];
+                    const fast = countQuestionsAtTier(mod.masteredFacts || {}, 'ACCOMPLISHED');
+                    const top = countQuestionsAtTier(mod.masteredFacts || {}, 'MASTERY');
+                    const attempts = mod.attempts ? Object.values(mod.attempts) : [];
 
-                html += '<div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-bottom:15px;">' +
-                    '<h4 style="margin-bottom:8px;">×' + table +
-                    (mod.mastery ? ' <span class="mastery-badge mastery-' + mod.mastery.toLowerCase() +
-                        '" style="font-size:12px; padding:3px 10px;">' + mod.mastery + '</span>' : '') +
-                    '</h4>' +
-                    '<p style="color:#666; font-size:14px;">' +
-                        fast + '/' + FACTS_PER_MODULE + ' facts under ' + MULT_HALF_SECONDS + 's · ' +
-                        top + '/' + FACTS_PER_MODULE + ' at MASTERY speed (under ' + MULT_FULL_SECONDS + 's) · ' +
-                        'best climb ' + formatFloors(mod.bestFloors || 0) + '/' +
-                        (mod.bestFloorsOutOf || FACTS_PER_MODULE) + ' floors, ' +
-                        (mod.bestCleared || 0) + ' facts cleared · ' +
-                        attempts.length + ' climb' + (attempts.length === 1 ? '' : 's') + '</p>';
+                    html += '<div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-bottom:15px;">' +
+                        '<h4 style="margin-bottom:8px;">' + game.moduleLabel(table) +
+                        (mod.mastery ? ' <span class="mastery-badge mastery-' + mod.mastery.toLowerCase() +
+                            '" style="font-size:12px; padding:3px 10px;">' + mod.mastery + '</span>' : '') +
+                        '</h4>' +
+                        '<p style="color:#666; font-size:14px;">' +
+                            fast + '/' + FACTS_PER_MODULE + ' facts under ' + HALF_SECONDS + 's · ' +
+                            top + '/' + FACTS_PER_MODULE + ' at MASTERY speed (under ' + FULL_SECONDS + 's) · ' +
+                            'best ' + game.runNoun + ' ' + formatUnits(mod[game.bestKey] || 0) + '/' +
+                            (mod[game.bestOutOfKey] || FACTS_PER_MODULE) + ' ' + game.unitMany + ', ' +
+                            (mod.bestCleared || 0) + ' facts cleared · ' +
+                            attempts.length + ' ' + (attempts.length === 1 ? game.runNoun : game.runNounPlural) +
+                            '</p>';
 
-                if (attempts.length) {
-                    html += '<div class="attempt-history" style="margin-top:12px;">' +
-                        attempts.slice().reverse().map(function (a) {
-                            const floors = a.floorsClimbed === undefined ? (a.factsCleared || 0) : a.floorsClimbed;
-                            const outOf = a.floorsPossible || FACTS_PER_MODULE;
-                            return renderAttempt(a, '🧗 Climbed <strong>' + formatFloors(floors) + '/' +
-                                outOf + ' floors</strong> · ' + (a.factsCleared || 0) +
-                                '/' + FACTS_PER_MODULE + ' facts cleared' +
-                                (a.towerComplete ? ' — reached the roof 🚩' : ''));
-                        }).join('') +
-                        '</div>';
-                } else {
-                    html += '<p style="color:#999; font-size:14px; margin-top:8px;">No climbs yet</p>';
-                }
-                html += '</div>';
+                    if (attempts.length) {
+                        html += '<div class="attempt-history" style="margin-top:12px;">' +
+                            attempts.slice().reverse().map(function (a) {
+                                // Climbs saved before the tower grew recorded neither field.
+                                const units = a[game.attemptUnitsKey] === undefined
+                                    ? (a.factsCleared || 0) : a[game.attemptUnitsKey];
+                                const outOf = a[game.attemptOutOfKey] || FACTS_PER_MODULE;
+                                // `towerComplete` is what Sky Climber attempts were saved with
+                                // before the two games shared one field name.
+                                const finished = a.goalReached || a.towerComplete;
+                                return renderAttempt(a, game.emoji + ' Reached <strong>' +
+                                    formatUnits(units) + '/' + outOf + ' ' + game.unitMany +
+                                    '</strong> · ' + (a.factsCleared || 0) + '/' + FACTS_PER_MODULE +
+                                    ' facts cleared' + (finished ? ' — ' + game.goalToast : ''));
+                            }).join('') +
+                            '</div>';
+                    } else {
+                        html += '<p style="color:#999; font-size:14px; margin-top:8px;">No ' +
+                                game.runNounPlural + ' yet</p>';
+                    }
+                    html += '</div>';
+                });
             });
 
             $('student-detail-content').innerHTML = html;
@@ -4004,7 +4495,7 @@
             removeStudent: removeStudent,
             moveStudent: moveStudent,
             resetStudentLevel: resetStudentLevel,
-            resetStudentMult: resetStudentMult,
+            resetStudentGame: resetStudentGame,
             resetStudentPin: resetStudentPin,
             showStudentDetail: showStudentDetail
         };

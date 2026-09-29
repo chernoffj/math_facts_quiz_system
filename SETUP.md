@@ -60,48 +60,67 @@ students/{pushId}         name, avatar, teacherUid, teacherCode, grade, createdA
   levels/{A..E}           unlocked, mastery, masteredQuestions{key:tier}, attempts{}
   mult/{t2..t10}          mastery, masteredFacts{f1..f12:tier}, bestCleared, bestFloors,
                           bestFloorsOutOf, attempts{}
+  div/{d2..d10}           mastery, masteredFacts{f1..f12:tier}, bestCleared, bestDepth,
+                          bestDepthOutOf, attempts{}
 ```
 
-`bestCleared` is the most facts cleared in a single climb; `bestFloors` is the highest the climber
-reached in a single climb (it can be a half number), and `bestFloorsOutOf` says how tall the tower
-was when that best was set. Records written before `bestFloors` existed still load — it defaults to
-0 and fills in on the next climb. Records written when the tower was 12 floors tall have no
-`bestFloorsOutOf`; those default to 12, so an old best still reads as `12/12` rather than being
-silently rescored against the taller tower. A new climb takes over the record when it is at least as
-good *as a fraction of its own tower*.
+`mult` is Sky Climber (×2–×10) and `div` is Sea Diver (÷2–÷10). The two branches have the same
+shape; only the progress-unit field names differ, so a saved attempt reads honestly on its own and
+a dive never claims to have climbed floors. In both, `masteredFacts` is keyed `f1`..`f12` by the
+*second* number of the fact — the multiplier for a climb, the quotient for a dive — so `d7/f8` is
+`56 ÷ 7`.
 
-## 3b. Sky Climber rules
+`bestCleared` is the most facts cleared in a single run. `bestFloors` / `bestDepth` is the furthest
+the mover got in a single run (it can be a half number), and `bestFloorsOutOf` / `bestDepthOutOf`
+says how long the scene was when that best was set. Records written before those fields existed
+still load — they default to 0 and fill in on the next run. Records written when the tower was 12
+floors tall have no `bestFloorsOutOf`; those default to 12, so an old best still reads as `12/12`
+rather than being silently rescored against the taller tower. A new run takes over the record when
+it is at least as good *as a fraction of its own scene*.
 
-Every climb is **exactly 20 questions on a 20-floor tower** — one floor per question, so a flawless
-climb reaches the roof.
+A student record created before Sea Diver existed simply has no `div` branch. `normalizeStudent()`
+fills one in on load, so those students see nine empty `÷` modules and write the branch on their
+first dive. Nothing needs migrating, and no Firebase rule changes.
 
-**The question set.** The first 12 questions are the whole table (`×1` to `×12`) in random order.
-The last 8 are repeats, chosen from that opening pass:
+## 3b. Sky Climber and Sea Diver rules
+
+The two games are the same game with a different scene, so one engine runs both: Sky Climber
+practises `×2`–`×10` up a 20-floor tower, Sea Diver practises `÷2`–`÷10` down a 20-depth trench.
+Everything they disagree about — the wording, the scene, the storage branch — lives in the `GAMES`
+table at the top of the script.
+
+Every run is **exactly 20 questions over 20 units of progress** — one unit per question, so a
+flawless run reaches the end.
+
+**The question set.** The first 12 questions are the whole set in random order: `×1` to `×12` for a
+climb, and `N÷N` to `(N×12)÷N` for a dive (so ÷7 runs `7÷7` through `84÷7`). The last 8 are repeats,
+chosen from that opening pass:
 
 * every fact the student got **wrong** comes back first, slowest miss first;
 * the remaining slots are filled with the **slowest** correct answers, slowest first;
 * so if nothing was missed, the 8 repeats are simply the 8 slowest facts.
 
-The same fact is never asked twice in a row.
+The same fact is never asked twice in a row. A climb shows its pair in either order, because
+multiplication is commutative; a dive always shows `dividend ÷ divisor`, because division is not.
 
-**The climb.** Each question is scored on its own:
+**Scoring.** Each question is scored on its own:
 
-| Answer | Climb | Fact |
+| Answer | Progress | Fact |
 | --- | --- | --- |
-| Correct in under 3s (mastery speed) | full floor | counts as cleared for this run |
-| Correct in under 6s | half a floor | not cleared |
-| Correct but slower, or wrong | no climb | not cleared |
+| Correct in under 3s (mastery speed) | full floor / depth | counts as cleared for this run |
+| Correct in under 6s | half a floor / depth | not cleared |
+| Correct but slower, or wrong | none | not cleared |
 
-A repeat of an already-cleared fact still earns its floor, because the floor belongs to the question
+A repeat of an already-cleared fact still earns its unit, because the unit belongs to the question
 rather than to the fact. `Facts Cleared` is still out of 12 and is what module mastery is based on;
-`Floors Climbed` is out of 20 and is the score for the run.
+`Floors Climbed` / `Depth Reached` is out of 20 and is the score for the run.
 
 The full question set for each level is now generated in the browser instead of being stored on
 every student record, which makes student records much smaller.
 
 ## 3c. How an answer gets graded
 
-This applies to both run modes. A correct answer is accepted the moment it is typed. A wrong one is
+This applies to all three run modes. A correct answer is accepted the moment it is typed. A wrong one is
 only judged on sight once it is as long as the right answer, because anything shorter might still be
 half typed — so a student who types `5` for `7 × 3` has not answered yet. Three things make sure that
 can never strand a run:
